@@ -1,4 +1,4 @@
-const API_URL = 'https://script.google.com/macros/s/AKfycby61mLJHQR003PqMzDo1xPjIWvn1wl0_tYVkccJZA7-fOJP7so1ENFEEAURNabb0WGi/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbx1dQT2MQpbKJZVGIUD3z6shQu9Y4zCbZzGAxqAhPMKkunxQafoBTABHUC0NCGKUitm/exec';
 
 const pantallas = {
   inicio: document.getElementById('pantalla-inicio'),
@@ -278,7 +278,6 @@ async function fetchApi(action, data) {
     console.log(`[API] Enviando ${action}:`, data);
     const respuesta = await fetch(API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action, ...data }),
     });
     const resultado = respuesta.ok ? await respuesta.json() : { ok: false, error: 'Error en la API' };
