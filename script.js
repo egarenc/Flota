@@ -275,13 +275,17 @@ async function fetchApi(action, data) {
     return { ok: false, error: 'API_URL no configurada' };
   }
   try {
+    console.log(`[API] Enviando ${action}:`, data);
     const respuesta = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action, ...data }),
     });
-    return respuesta.ok ? respuesta.json() : { ok: false, error: 'Error en la API' };
+    const resultado = respuesta.ok ? await respuesta.json() : { ok: false, error: 'Error en la API' };
+    console.log(`[API] Respuesta ${action}:`, resultado);
+    return resultado;
   } catch (error) {
+    console.error(`[API] Error en ${action}:`, error);
     return { ok: false, error: error.message };
   }
 }
@@ -365,9 +369,14 @@ function obtenerBarcoDesde(fila, columna, visited) {
 }
 
 btnCrear.addEventListener('click', async () => {
+  console.log('[UI] Botón Crear clickeado');
   const resultado = await crearPartidaApi();
+  console.log('[UI] Resultado de crearPartidaApi:', resultado);
   if (resultado.ok) {
+    console.log('[UI] Cambio a pantalla preparacion');
     mostrarPantalla('preparacion');
+  } else {
+    console.error('[UI] Error al crear partida:', resultado.error);
   }
 });
 
