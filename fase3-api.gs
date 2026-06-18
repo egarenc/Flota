@@ -182,10 +182,23 @@ function consultarEstado(params) {
     ok: true,
     turnoDe: Number(partida.filaDatos[3]),
     estadoPartida: partida.filaDatos[4],
+    listoParaBatalla: tableroListo(tableroPropio) && tableroListo(tableroRival),
     misDisparos: tableroPropio ? JSON.parse(tableroPropio.datos[3] || '[]') : [],
     disparosRival: tableroRival ? JSON.parse(tableroRival.datos[3] || '[]') : [],
   };
   return estado;
+}
+
+function tableroListo(tablero) {
+  if (!tablero || !tablero.datos[2]) {
+    return false;
+  }
+  try {
+    const barcos = JSON.parse(tablero.datos[2] || '[]');
+    return Array.isArray(barcos) && barcos.length > 0;
+  } catch (error) {
+    return false;
+  }
 }
 
 function buscarFilaPartida(hoja, codigo) {

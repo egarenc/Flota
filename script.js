@@ -16,6 +16,8 @@ const btnOrientacion = document.getElementById('btn-orientacion');
 const listaBarcosDiv = document.getElementById('lista-barcos-disponibles');
 const infoColocacion = document.getElementById('informacion-colocacion');
 const estadoTurno = document.getElementById('estado-turno');
+const inputNombre = document.getElementById('nombre-jugador');
+const errorNombre = document.getElementById('error-nombre');
 const inputCodigo = document.getElementById('codigo-partida');
 
 const barcosDisponibles = [
@@ -29,6 +31,7 @@ let orientacion = 'horizontal';
 let barcoSeleccionado = null;
 let idPartida = null;
 let miJugador = null;
+let miNombre = '';
 let miTurno = false;
 let pollingId = null;
 let disparosRivalPrevios = [];
@@ -228,6 +231,20 @@ async function consultarEstadoApi() {
     return;
   }
 
+  if (!resultado.listoParaBatalla && pantallas.preparacion.classList.contains('activa')) {
+    infoColocacion.textContent = 'Esperando adversario...';
+    if (!pollingId) {
+      startPolling();
+    }
+    return;
+  }
+
+  if (resultado.listoParaBatalla && pantallas.preparacion.classList.contains('activa')) {
+    mostrarPantalla('batalla');
+    inicializarBatalla();
+    return;
+  }
+
   const nuevoTurno = Number(resultado.turnoDe) === miJugador;
   const misDisparos = resultado.misDisparos || [];
   const disparosRival = resultado.disparosRival || [];
@@ -258,9 +275,17 @@ function stopPolling() {
 }
 
 function inicializarBatalla() {
+  actualizarNombreBatalla();
   aplicarDisparosEnTableros(misDisparosPrevios, disparosRivalPrevios);
   renderTableros();
   consultarEstadoApi();
+}
+
+function actualizarNombreBatalla() {
+  const nombreLabel = document.getElementById('nombre-jugador-batalla');
+  if (nombreLabel) {
+    nombreLabel.textContent = miNombre ? `Jugador: ${miNombre}` : '';
+  }
 }
 
 function renderTableros() {
@@ -289,22 +314,55 @@ async function fetchApi(action, data) {
   }
 }
 
-async function crearPartidaApi() {
-  const resultado = await fetchApi('crearPartida', { jugadorId: `jugador_${Date.now()}` });
+function validarNombreJugador() {
+  const nombre = inputNombre.value.trim();
+  const patron = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]{1,15}$/;
+  if (!nombre) {
+    return { ok: false, error: 'Introduce un nombre de jugador.' };
+  }
+  if (!patron.test(nombre)) {
+    return { ok: false, error: 'El nombre solo puede contener letras y debe tener hasta 15 caracteres.' };
+  }
+  return { ok: true, nombre };
+}
+
+function mostrarErrorInicio(mensaje) {
+  if (errorNombre) {
+    errorNombre.textContent = mensaje;
+  }
+}
+
+function limpiarErrorInicio() {
+  if (errorNombre) {
+    errorNombre.textContent = '';
+  }
+}
+
+async function crearPartidaApi(nombreJugador) {
+  const resultado = await fetchApi('crearPartida', {
+    jugadorId: `jugador_${nombreJugador}_${Date.now()}`,
+    playerName: nombreJugador,
+  });
   if (resultado.ok) {
     idPartida = resultado.idPartida;
     miJugador = 1;
-    infoColocacion.textContent = `Partida creada: ${idPartida}. Coloca tus barcos.`;
+    miNombre = nombreJugador;
+    infoColocacion.textContent = `Partida creada: ${idPartida}. ${nombreJugador}, coloca tus barcos.`;
   }
   return resultado;
 }
 
-async function unirsePartidaApi(codigo) {
-  const resultado = await fetchApi('unirsePartida', { idPartida: codigo, jugadorId: `jugador_${Date.now()}` });
+async function unirsePartidaApi(codigo, nombreJugador) {
+  const resultado = await fetchApi('unirsePartida', {
+    idPartida: codigo,
+    jugadorId: `jugador_${nombreJugador}_${Date.now()}`,
+    playerName: nombreJugador,
+  });
   if (resultado.ok) {
     idPartida = codigo;
     miJugador = 2;
-    infoColocacion.textContent = `Unido a la partida ${idPartida}. Coloca tus barcos.`;
+    miNombre = nombreJugador;
+    infoColocacion.textContent = `Unido a la partida ${idPartida}. ${nombreJugador}, coloca tus barcos.`;
   }
   return resultado;
 }
@@ -369,7 +427,13 @@ function obtenerBarcoDesde(fila, columna, visited) {
 
 btnCrear.addEventListener('click', async () => {
   console.log('[UI] Botón Crear clickeado');
-  const resultado = await crearPartidaApi();
+  limpiarErrorInicio();
+  const validacion = validarNombreJugador();
+  if (!validacion.ok) {
+    mostrarErrorInicio(validacion.error);
+    return;
+  }
+  const resultado = await crearPartidaApi(validacion.nombre);
   console.log('[UI] Resultado de crearPartidaApi:', resultado);
   if (resultado.ok) {
     console.log('[UI] Cambio a pantalla preparacion');
@@ -380,12 +444,18 @@ btnCrear.addEventListener('click', async () => {
 });
 
 btnUnirse.addEventListener('click', async () => {
+  limpiarErrorInicio();
+  const validacion = validarNombreJugador();
+  if (!validacion.ok) {
+    mostrarErrorInicio(validacion.error);
+    return;
+  }
   const codigo = inputCodigo.value.trim().toUpperCase();
   if (!codigo) {
     infoColocacion.textContent = 'Introduce un código de partida para unirte.';
     return;
   }
-  const resultado = await unirsePartidaApi(codigo);
+  const resultado = await unirsePartidaApi(codigo, validacion.nombre);
   if (resultado.ok) {
     mostrarPantalla('preparacion');
   } else {
@@ -401,8 +471,8 @@ btnListo.addEventListener('click', async () => {
 
   const resultado = await guardarTableroApi();
   if (resultado.ok) {
-    mostrarPantalla('batalla');
-    inicializarBatalla();
+    infoColocacion.textContent = 'Esperando adversario...';
+    startPolling();
   } else {
     infoColocacion.textContent = resultado.error || 'No se pudo guardar el tablero.';
   }

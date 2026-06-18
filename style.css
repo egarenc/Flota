@@ -98,13 +98,22 @@ button:active {
   color: #071f38;
 }
 
+#nombre-jugador,
 #codigo-partida {
+  width: 100%;
   border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.16);
   background: rgba(255, 255, 255, 0.06);
   color: var(--texto);
   padding: 14px 16px;
   font-size: 1rem;
+}
+
+.error-inicio {
+  min-height: 24px;
+  color: #ffd5d5;
+  font-size: 0.95rem;
+  margin-bottom: 12px;
 }
 
 .preparacion-layout,
@@ -230,6 +239,12 @@ button:active {
   border-radius: 999px;
   display: inline-block;
   background: rgba(255, 255, 255, 0.08);
+}
+
+.nombre-jugador-batalla {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  color: #d9ecff;
 }
 
 @media (min-width: 900px) {

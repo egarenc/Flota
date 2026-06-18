@@ -12,6 +12,8 @@
       <div class="panel central">
         <h1>Hundir la flota</h1>
         <p>Elige una opción para comenzar.</p>
+        <input id="nombre-jugador" type="text" placeholder="Nombre de jugador (máx 15 letras)" maxlength="15" />
+        <div id="error-nombre" class="error-inicio"></div>
         <div class="botones-inicio">
           <button id="btn-crear">Crear nueva partida</button>
           <div class="unirse-grupo">
@@ -53,6 +55,7 @@
       <div class="panel">
         <header class="panel-header">
           <h2>Batalla</h2>
+          <p id="nombre-jugador-batalla" class="nombre-jugador-batalla"></p>
           <p id="estado-turno" class="estado-turno">Esperando al rival...</p>
         </header>
 
