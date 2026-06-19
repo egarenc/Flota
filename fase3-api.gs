@@ -68,7 +68,7 @@ function generarCodigoPartida() {
 
 function crearPartida(params) {
   const nombreJugador = params.playerName || 'Jugador';
-  const jugadorId = `jugador_${nombreJugador}_${Date.now()}`;
+  const jugadorId = `${nombreJugador}`;
   const hoja = obtenerHoja(HOJA_PARTIDAS);
   const codigo = generarCodigoUnico(hoja);
   hoja.appendRow([codigo, jugadorId, '', 1, 'Esperando']);
@@ -141,7 +141,7 @@ function extraerNombreDeJugadorId(jugadorId) {
 function unirsePartida(params) {
   const codigoEspecifico = params.idPartida;
   const nombreJugador = params.playerName || 'Jugador';
-  const jugadorId = `jugador_${nombreJugador}_${Date.now()}`;
+  const jugadorId = `${nombreJugador}`;
   const hoja = obtenerHoja(HOJA_PARTIDAS);
   const datos = hoja.getDataRange().getValues();
 
