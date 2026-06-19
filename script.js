@@ -1,4 +1,4 @@
-const API_URL = 'https://script.google.com/macros/s/AKfycbzgavjpogPJhrz2iji5NI93mmFintyjQmkAe1MQ6y7Z2RZhwbL76Sro0UeZkkAvU-sf/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbyIVdQtlBEVIy38J-bjPoM2tYoUoBl29hysxdocb1wZM9n0rJVjIAdssdtD_e5KTZ1L/exec';
 
 const pantallas = {
   inicio: document.getElementById('pantalla-inicio'),
