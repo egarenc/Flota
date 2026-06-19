@@ -1,4 +1,4 @@
-const API_URL = 'https://script.google.com/macros/s/AKfycbwuVSTX0DxzWtHT8ApiP9nNkgyz7on0jAFNU5aOcAjYqB_seB81LElmP4IPfNfhpwI/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzgavjpogPJhrz2iji5NI93mmFintyjQmkAe1MQ6y7Z2RZhwbL76Sro0UeZkkAvU-sf/exec';
 
 const pantallas = {
   inicio: document.getElementById('pantalla-inicio'),
@@ -18,6 +18,7 @@ const infoColocacion = document.getElementById('informacion-colocacion');
 const estadoTurno = document.getElementById('estado-turno');
 const inputNombre = document.getElementById('nombre-jugador');
 const errorNombre = document.getElementById('error-nombre');
+const errorUnirse = document.getElementById('error-unirse');
 const inputCodigo = document.getElementById('codigo-partida');
 
 const barcosDisponibles = [
@@ -312,6 +313,10 @@ function aplicarDisparosEnTableros(misDisparos, disparosRival) {
       miRadar[fila][columna] = 'tocado';
     } else if (disparo.resultado === 'hundido') {
       miRadar[fila][columna] = 'hundido';
+      const barcohundido = obtenerBarcoEnPosicion(fila, columna);
+      barcohundido?.posiciones.forEach(([r, c]) => {
+        miRadar[r][c] = 'hundido';
+      }); 
     }
   });
 
@@ -323,6 +328,10 @@ function aplicarDisparosEnTableros(misDisparos, disparosRival) {
       miTablero[fila][columna] = 'tocado';
     } else if (disparo.resultado === 'hundido') {
       miTablero[fila][columna] = 'hundido';
+      const barcohundido = obtenerBarcoEnPosicion(fila, columna);
+      barcohundido?.posiciones.forEach(([r, c]) => {
+        miTablero[r][c] = 'hundido';
+      });
     }
   });
 }
@@ -466,6 +475,9 @@ function limpiarErrorInicio() {
   if (errorNombre) {
     errorNombre.textContent = '';
   }
+  if (errorUnirse) { // NUEVO: Limpiamos también el error de unirse
+    errorUnirse.textContent = '';
+  }
 }
 
 async function crearPartidaApi(nombreJugador) {
@@ -587,7 +599,6 @@ btnUnirse.addEventListener('click', async () => {
   }
   const codigo = inputCodigo.value.trim().toUpperCase();
   
-  // Si hay código, primero verificar si el jugador ya existe en esa partida
   if (codigo) {
     const resultadoVerificacion = await verificarPartidaExistenteApi(codigo, validacion.nombre);
     if (resultadoVerificacion.ok) {
@@ -600,14 +611,15 @@ btnUnirse.addEventListener('click', async () => {
       consultarEstadoApi();
       return;
     }
-    // Si no existe, intentar unirse como nuevo jugador
   }
   
   const resultado = await unirsePartidaApi(codigo || null, validacion.nombre);
   if (resultado.ok) {
     mostrarPantalla('preparacion');
   } else {
-    infoColocacion.textContent = resultado.error || 'Error al unirse.';
+        if (errorUnirse) {
+      errorUnirse.textContent = resultado.error || 'Error al intentar unirse a la partida.';
+    }
   }
 });
 

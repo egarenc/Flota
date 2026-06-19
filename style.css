@@ -24,13 +24,16 @@ html, body {
 
 body {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
-  padding: 24px;
+  padding: 16px;
+  min-height: 100vh;
 }
 
 .app-shell {
-  width: min(1200px, 100%);
+  width: min(1000px, 100%);
+  padding: 0 12px;
+  margin: 0 auto;
 }
 
 .pantalla {
@@ -46,7 +49,7 @@ body {
   background: rgba(8, 24, 44, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 24px;
-  padding: 32px;
+  padding: 28px;
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.25);
 }
 
@@ -130,23 +133,81 @@ button:active {
   gap: 24px;
 }
 
+.tablero-contenedor h3 {
+  margin: 0 0 14px;
+}
+
+@media (max-width: 900px) {
+  .preparacion-layout,
+  .batalla-layout {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .preparacion-layout {
+    gap: 20px;
+  }
+
+  .panel {
+    padding: 20px;
+  }
+
+  .tablero-contenedor {
+    padding: 16px;
+  }
+
+  .tablero {
+    gap: 2px;
+    padding: 10px;
+  }
+
+  .celda {
+    font-size: 0.75rem;
+  }
+
+  button,
+  input {
+    font-size: 0.95rem;
+  }
+
+  .botones-inicio,
+  .unirse-grupo {
+    gap: 12px;
+  }
+
+  .barra-lateral {
+    gap: 16px;
+  }
+
+  .lista-barcos-items {
+    gap: 8px;
+  }
+}
+
 .tablero-contenedor {
   width: 100%;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 20px;
   padding: 18px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .tablero {
   width: 100%;
   max-width: 100%;
+  min-width: 300px;
   display: grid;
   grid-template-columns: repeat(10, minmax(0, 1fr));
   gap: 4px;
   background: rgba(255, 255, 255, 0.04);
   padding: 12px;
   border-radius: 16px;
+}
+
+.tablero .celda {
+  min-width: 0;
 }
 
 .celda {
@@ -194,9 +255,13 @@ button:active {
   color: #1c293d;
 }
 
-.celda.tocado::after,
+.celda.tocado::after {
+  content: "🔥";
+  font-weight: 900;
+}
+
 .celda.hundido::after {
-  content: "X";
+  content: "💀";
   font-weight: 900;
 }
 
@@ -278,9 +343,95 @@ button:active {
   }
 }
 
-@media (max-width: 899px) {
+@media (max-width: 900px) {
+  .preparacion-layout,
+  .batalla-layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .panel {
+    padding: 18px;
+  }
+
+  .tablero-contenedor {
+    padding: 14px;
+  }
+
   .tablero {
-    grid-template-columns: repeat(10, minmax(0, 1fr));
+    min-width: 300px;
+    gap: 2px;
+    padding: 10px;
+  }
+
+  .celda {
+    font-size: 0.75rem;
+  }
+
+  button,
+  input {
+    font-size: 0.95rem;
+  }
+
+  .botones-inicio,
+  .unirse-grupo,
+  .barra-lateral {
+    gap: 12px;
+  }
+
+  .lista-barcos-items {
+    gap: 8px;
+  }
+
+  .tablero {
+    min-width: 260px;
+  }
+
+  .celda {
+    min-width: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  body {
+    padding: 12px;
+  }
+
+  .panel {
+    padding: 16px;
+  }
+
+  .tablero-contenedor {
+    padding: 12px;
+  }
+
+  .tablero {
+    padding: 8px;
+    gap: 2px;
+    min-width: 260px;
+  }
+
+  .celda {
+    font-size: 0.68rem;
+  }
+
+  button,
+  input {
+    font-size: 0.9rem;
+  }
+
+  .barco-item {
+    padding: 10px 12px;
+  }
+
+  .info-colocacion {
+    font-size: 0.9rem;
+  }
+
+  .estado-turno {
+    font-size: 0.95rem;
+    padding: 10px 14px;
   }
 }
 
