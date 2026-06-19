@@ -352,6 +352,9 @@ async function enviarDisparoApi(fila, columna) {
   const { resultado: disparoResultado } = resultado;
   miRadar[fila][columna] = disparoResultado === 'hundido' ? 'hundido' : disparoResultado === 'tocado' ? 'tocado' : 'fallo';
   renderTableros();
+  if (comprobarFinDePartida()) {
+    return; 
+  }
   actualizarTurno(false);
   startPolling();
 }
@@ -390,6 +393,9 @@ async function consultarEstadoApi() {
 
   aplicarDisparosEnTableros(misDisparos, disparosRival);
   renderTableros();
+  if (comprobarFinDePartida()) {
+    return;
+  }
   actualizarTurno(nuevoTurno);
 
   if (!nuevoTurno) {
@@ -411,6 +417,38 @@ function stopPolling() {
     clearInterval(pollingId);
     pollingId = null;
   }
+}
+
+const TOTAL_CELDAS_BARCOS = 20;
+
+function comprobarFinDePartida() {
+  let misAciertos = 0;
+  let aciertosRival = 0;
+
+    for (let f = 0; f < 10; f += 1) {
+    for (let c = 0; c < 10; c += 1) {
+      if (miRadar[f][c] === 'tocado' || miRadar[f][c] === 'hundido') misAciertos += 1;
+      if (miTablero[f][c] === 'tocado' || miTablero[f][c] === 'hundido') aciertosRival += 1;
+    }
+  }
+
+    if (misAciertos >= TOTAL_CELDAS_BARCOS) {
+    estadoTurno.textContent = '¡FIN DE LA BATALLA, HAS GANADO! 🏆';
+    estadoTurno.style.backgroundColor = 'rgba(46, 204, 113, 0.3)'; // Fondo verde suave
+    stopPolling();
+    miTurno = false; // Bloquea futuros clics
+    return true;
+  }
+
+  if (aciertosRival >= TOTAL_CELDAS_BARCOS) {
+    estadoTurno.textContent = 'FIN DE LA BATALLA, HAS SIDO VENCIDO 💥';
+    estadoTurno.style.backgroundColor = 'rgba(216, 79, 79, 0.3)'; // Fondo rojo suave
+    stopPolling();
+    miTurno = false;
+    return true;
+  }
+
+  return false;
 }
 
 function inicializarBatalla() {
@@ -523,6 +561,7 @@ async function guardarTableroApi() {
   });
 }
 
+/*
 function extraerBarcosDeTablero() {
   const barcos = [];
   const visited = Array.from({ length: 10 }, () => Array(10).fill(false));
@@ -542,6 +581,19 @@ function extraerBarcosDeTablero() {
   return barcos;
 }
 
+*/
+
+
+function extraerBarcosDeTablero() {
+  return barcosColocados.map((barco) => ({
+     tipo: barco.posiciones.length,
+     coordenadas: barco.posiciones.map(([r, c]) => `${r}-${c}`)
+  }));
+}
+
+
+
+/*
 function obtenerBarcoDesde(fila, columna, visited) {
   const coordenadas = [[fila, columna]];
   visited[fila][columna] = true;
@@ -571,6 +623,8 @@ function obtenerBarcoDesde(fila, columna, visited) {
     coordenadas: coordenadas.map(([r, c]) => `${r}-${c}`),
   };
 }
+
+*/
 
 btnCrear.addEventListener('click', async () => {
   console.log('[UI] Botón Crear clickeado');
