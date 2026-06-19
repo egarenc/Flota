@@ -43,6 +43,7 @@ let misDisparosPrevios = [];
 
 const miTablero = Array.from({ length: 10 }, () => Array(10).fill('agua'));
 const miRadar = Array.from({ length: 10 }, () => Array(10).fill('agua'));
+let barcosColocados = []; // Rastrea barcos colocados: {tipo, posiciones: [[fila, col], ...]}
 
 function mostrarPantalla(nombre) {
   Object.values(pantallas).forEach((pantalla) => pantalla.classList.remove('activa'));
@@ -58,8 +59,41 @@ function crearTablero(contenedor, matriz, conEtiquetas = false, esRadar = false)
       celda.className = `celda ${valor}`;
       celda.dataset.coordenada = `${fila}-${columna}`;
 
-      if (conEtiquetas) {
-        celda.textContent = String.fromCharCode(65 + fila) + (columna + 1);
+      // Si la celda contiene un barco y no es el radar, pintar un emoticono según
+      // si es la primera/última/medio celda del barco.
+      if (valor === 'barco' && !esRadar) {
+        const barco = obtenerBarcoEnPosicion(fila, columna);
+        let contenido = '';
+        if (barco) {
+          const posiciones = barco.posiciones;
+          const indice = posiciones.findIndex(([r, c]) => r === fila && c === columna);
+          const longitud = posiciones.length;
+          let emoji = '';
+          let flip = false;
+
+          if (longitud === 1) {
+            emoji = '🚢';
+          } else if (indice === 0) {
+            emoji = '🚢';
+          } else if (indice === longitud - 1) {
+            emoji = '🚢';
+            flip = true; // voltear verticalmente la última celda
+          } else if (longitud >= 3) {
+            emoji = '↔️';
+          }
+
+          if (emoji) {
+            contenido = `<span class="emoji${flip ? ' flip' : ''}">${emoji}</span>`;
+          }
+        } else {
+          // Fallback genérico
+          contenido = `<span class="emoji">🚢</span>`;
+        }
+        celda.innerHTML = contenido;
+      } else {
+        if (conEtiquetas) {
+          celda.textContent = String.fromCharCode(65 + fila) + (columna + 1);
+        }
       }
 
       if (contenedor === tableroPreparacion) {
@@ -84,7 +118,9 @@ function renderListaBarcos() {
     if (barcoSeleccionado && barcoSeleccionado.id === barco.id) {
       item.classList.add('seleccionado');
     }
-    item.textContent = `${barco.label} — disponibles: ${barco.disponibles - barco.colocados}`;
+    const orientacionEmoji = orientacion === 'horizontal' ? '⬅️➡️' : '⬆️⬇️';
+    const indicadorOrientacion = barcoSeleccionado && barcoSeleccionado.id === barco.id ? ` ${orientacionEmoji}` : '';
+    item.textContent = `${barco.label} — disponibles: ${barco.disponibles - barco.colocados}${indicadorOrientacion}`;
     item.disabled = barco.colocados >= barco.disponibles;
     item.addEventListener('click', () => seleccionarBarco(barco.id));
     listaBarcosDiv.appendChild(item);
@@ -93,10 +129,18 @@ function renderListaBarcos() {
 
 function seleccionarBarco(id) {
   const barco = barcosDisponibles.find((item) => item.id === id);
-  if (barco && barco.colocados < barco.disponibles) {
+  if (!barco || barco.colocados >= barco.disponibles) {
+    return;
+  }
+
+  if (barcoSeleccionado && barcoSeleccionado.id === barco.id) {
+    alternarOrientacion();
+    infoColocacion.textContent = `Rotado a ${orientacion}. Coloca un barco de ${barco.tamaño} casillas.`;
+  } else {
     barcoSeleccionado = barco;
     infoColocacion.textContent = `Coloca un barco de ${barco.tamaño} casillas.`;
   }
+
   renderListaBarcos();
 }
 
@@ -118,6 +162,7 @@ function obtenerSiguienteBarcoDisponible(idActual) {
 function alternarOrientacion() {
   orientacion = orientacion === 'horizontal' ? 'vertical' : 'horizontal';
   btnOrientacion.textContent = `Orientación: ${orientacion.charAt(0).toUpperCase() + orientacion.slice(1)}`;
+  renderListaBarcos(); // Actualizar el emoji de orientación en el botón seleccionado
 }
 
 function actualizarTituloBarcos() {
@@ -128,12 +173,22 @@ function actualizarTituloBarcos() {
 }
 
 function handlePreparacionClick(fila, columna) {
+  // Primero verificar si hay un barco colocado en esa posición para removerlo
+  if (miTablero[fila][columna] === 'barco') {
+    if (removerBarcoDelTablero(fila, columna)) {
+      infoColocacion.textContent = 'Barco removido. Vuelve a colocarlo o elige otro.';
+      renderListaBarcos();
+      renderTableros();
+      return;
+    }
+  }
+
   if (!barcoSeleccionado) {
     infoColocacion.textContent = 'Selecciona primero un barco para colocar.';
     return;
   }
 
-  if (colocarBarco(fila, columna, barcoSeleccionado.tamaño, orientacion)) {
+  if (colocarBarco(fila, columna, barcoSeleccionado.tamaño, orientacion, barcoSeleccionado.id)) {
     barcoSeleccionado.colocados += 1;
     if (barcoSeleccionado.colocados >= barcoSeleccionado.disponibles) {
       const idAnterior = barcoSeleccionado.id;
@@ -172,7 +227,7 @@ function handleRadarClick(fila, columna) {
   enviarDisparoApi(fila, columna);
 }
 
-function colocarBarco(fila, columna, tamaño, orientacion) {
+function colocarBarco(fila, columna, tamaño, orientacion, tipo) {
   const coordenadas = obtenerCoordenadasBarco(fila, columna, tamaño, orientacion);
   if (!coordenadas) {
     return false;
@@ -186,6 +241,9 @@ function colocarBarco(fila, columna, tamaño, orientacion) {
   coordenadas.forEach(([r, c]) => {
     miTablero[r][c] = 'barco';
   });
+  
+  // Registrar barco colocado
+  barcosColocados.push({ tipo, posiciones: coordenadas });
   return true;
 }
 
@@ -200,6 +258,40 @@ function obtenerCoordenadasBarco(fila, columna, tamaño, orientacion) {
     coordenadas.push([r, c]);
   }
   return coordenadas;
+}
+
+function obtenerBarcoEnPosicion(fila, columna) {
+  // Busca qué barco está en esa posición
+  return barcosColocados.find((barco) =>
+    barco.posiciones.some(([r, c]) => r === fila && c === columna)
+  );
+}
+
+function removerBarcoDelTablero(fila, columna) {
+  // Encuentra el barco en esa posición y lo remueve
+  const barcoEnPosicion = obtenerBarcoEnPosicion(fila, columna);
+  if (!barcoEnPosicion) {
+    return false;
+  }
+
+  // Limpiar el tablero
+  barcoEnPosicion.posiciones.forEach(([r, c]) => {
+    miTablero[r][c] = 'agua';
+  });
+
+  // Remover del registro de barcosColocados
+  const indice = barcosColocados.indexOf(barcoEnPosicion);
+  if (indice > -1) {
+    barcosColocados.splice(indice, 1);
+  }
+
+  // Restaurar el contador de barcosDisponibles
+  const barco = barcosDisponibles.find((b) => b.id === barcoEnPosicion.tipo);
+  if (barco) {
+    barco.colocados -= 1;
+  }
+
+  return true;
 }
 
 function actualizarTurno(activo) {
@@ -538,3 +630,8 @@ btnOrientacion.addEventListener('click', alternarOrientacion);
 
 renderListaBarcos();
 renderTableros();
+
+// Preseleccionar el primer barco disponible
+barcoSeleccionado = barcosDisponibles[0];
+infoColocacion.textContent = `Coloca un barco de ${barcoSeleccionado.tamaño} casillas.`;
+renderListaBarcos();

@@ -116,7 +116,13 @@ button:active {
   margin-bottom: 12px;
 }
 
-.preparacion-layout,
+.preparacion-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(280px, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
 .batalla-layout {
   display: flex;
   flex-direction: column;
@@ -125,7 +131,7 @@ button:active {
 }
 
 .tablero-contenedor {
-  width: min(640px, 100%);
+  width: 100%;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 20px;
@@ -154,6 +160,17 @@ button:active {
   color: rgba(255, 255, 255, 0.9);
   cursor: pointer;
   user-select: none;
+}
+
+.celda .emoji {
+  display: inline-block;
+  font-size: 1.35rem;
+  line-height: 1;
+  transform-origin: center;
+}
+
+.celda .emoji.flip {
+  transform: scaleX(-1);
 }
 
 .celda.agua {
