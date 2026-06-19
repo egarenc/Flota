@@ -118,11 +118,14 @@ button:active {
 
 .preparacion-layout,
 .batalla-layout {
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 24px;
 }
 
 .tablero-contenedor {
+  width: min(640px, 100%);
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 20px;
@@ -130,6 +133,8 @@ button:active {
 }
 
 .tablero {
+  width: 100%;
+  max-width: 100%;
   display: grid;
   grid-template-columns: repeat(10, minmax(0, 1fr));
   gap: 4px;
@@ -212,6 +217,7 @@ button:active {
 .barco-item.seleccionado {
   background: rgba(59, 143, 255, 0.3);
   border-color: rgba(91, 192, 255, 0.5);
+  box-shadow: 0 0 0 1px rgba(91, 192, 255, 0.7), 0 0 18px rgba(59, 143, 255, 0.35);
 }
 
 .controles-colocacion {

@@ -1,4 +1,4 @@
-const API_URL = 'https://script.google.com/macros/s/AKfycbx1dQT2MQpbKJZVGIUD3z6shQu9Y4zCbZzGAxqAhPMKkunxQafoBTABHUC0NCGKUitm/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwuVSTX0DxzWtHT8ApiP9nNkgyz7on0jAFNU5aOcAjYqB_seB81LElmP4IPfNfhpwI/exec';
 
 const pantallas = {
   inicio: document.getElementById('pantalla-inicio'),
@@ -26,6 +26,10 @@ const barcosDisponibles = [
   { id: 'fragata', tamaño: 2, disponibles: 3, colocados: 0, label: '3 x 2 casillas' },
   { id: 'caza', tamaño: 1, disponibles: 4, colocados: 0, label: '4 x 1 casilla' },
 ];
+
+function todosLosBarcosSonColocados() {
+  return barcosDisponibles.every((barco) => barco.colocados >= barco.disponibles);
+}
 
 let orientacion = 'horizontal';
 let barcoSeleccionado = null;
@@ -96,9 +100,31 @@ function seleccionarBarco(id) {
   renderListaBarcos();
 }
 
+function obtenerSiguienteBarcoDisponible(idActual) {
+  const indiceActual = barcosDisponibles.findIndex((item) => item.id === idActual);
+  for (let i = indiceActual + 1; i < barcosDisponibles.length; i += 1) {
+    if (barcosDisponibles[i].colocados < barcosDisponibles[i].disponibles) {
+      return barcosDisponibles[i];
+    }
+  }
+  for (let i = 0; i <= indiceActual; i += 1) {
+    if (barcosDisponibles[i].colocados < barcosDisponibles[i].disponibles) {
+      return barcosDisponibles[i];
+    }
+  }
+  return null;
+}
+
 function alternarOrientacion() {
   orientacion = orientacion === 'horizontal' ? 'vertical' : 'horizontal';
   btnOrientacion.textContent = `Orientación: ${orientacion.charAt(0).toUpperCase() + orientacion.slice(1)}`;
+}
+
+function actualizarTituloBarcos() {
+  const titulo = document.getElementById('titulo-lista-barcos');
+  if (titulo) {
+    titulo.textContent = 'Flota colocada';
+  }
 }
 
 function handlePreparacionClick(fila, columna) {
@@ -110,8 +136,20 @@ function handlePreparacionClick(fila, columna) {
   if (colocarBarco(fila, columna, barcoSeleccionado.tamaño, orientacion)) {
     barcoSeleccionado.colocados += 1;
     if (barcoSeleccionado.colocados >= barcoSeleccionado.disponibles) {
-      barcoSeleccionado = null;
-      infoColocacion.textContent = 'Barco colocado. Elige otro barco.';
+      const idAnterior = barcoSeleccionado.id;
+      const siguienteBarco = obtenerSiguienteBarcoDisponible(idAnterior);
+      
+      if (todosLosBarcosSonColocados()) {
+        barcoSeleccionado = null;
+        infoColocacion.textContent = 'Adelante, vamos al ataque.';
+        actualizarTituloBarcos();
+      } else if (siguienteBarco) {
+        barcoSeleccionado = siguienteBarco;
+        infoColocacion.textContent = `Barco colocado. Siguiente: ${siguienteBarco.label}. Coloca un barco de ${siguienteBarco.tamaño} casillas.`;
+      } else {
+        barcoSeleccionado = null;
+        infoColocacion.textContent = 'Barco colocado. Elige otro barco.';
+      }
     } else {
       infoColocacion.textContent = 'Barco colocado. Coloca otro del mismo tipo o elige otro.';
     }
@@ -340,27 +378,32 @@ function limpiarErrorInicio() {
 
 async function crearPartidaApi(nombreJugador) {
   const resultado = await fetchApi('crearPartida', {
-    jugadorId: `jugador_${nombreJugador}_${Date.now()}`,
     playerName: nombreJugador,
   });
   if (resultado.ok) {
     idPartida = resultado.idPartida;
-    miJugador = 1;
+    miJugador = resultado.miJugador || 1;
     miNombre = nombreJugador;
     infoColocacion.textContent = `Partida creada: ${idPartida}. ${nombreJugador}, coloca tus barcos.`;
   }
   return resultado;
 }
 
+async function verificarPartidaExistenteApi(codigo, nombreJugador) {
+  return fetchApi('verificarPartidaExistente', {
+    idPartida: codigo,
+    playerName: nombreJugador,
+  });
+}
+
 async function unirsePartidaApi(codigo, nombreJugador) {
   const resultado = await fetchApi('unirsePartida', {
     idPartida: codigo,
-    jugadorId: `jugador_${nombreJugador}_${Date.now()}`,
     playerName: nombreJugador,
   });
   if (resultado.ok) {
-    idPartida = codigo;
-    miJugador = 2;
+    idPartida = resultado.idPartida;
+    miJugador = resultado.miJugador || 2;
     miNombre = nombreJugador;
     infoColocacion.textContent = `Unido a la partida ${idPartida}. ${nombreJugador}, coloca tus barcos.`;
   }
@@ -451,11 +494,24 @@ btnUnirse.addEventListener('click', async () => {
     return;
   }
   const codigo = inputCodigo.value.trim().toUpperCase();
-  if (!codigo) {
-    infoColocacion.textContent = 'Introduce un código de partida para unirte.';
-    return;
+  
+  // Si hay código, primero verificar si el jugador ya existe en esa partida
+  if (codigo) {
+    const resultadoVerificacion = await verificarPartidaExistenteApi(codigo, validacion.nombre);
+    if (resultadoVerificacion.ok) {
+      idPartida = resultadoVerificacion.idPartida;
+      miJugador = resultadoVerificacion.miJugador;
+      miNombre = validacion.nombre;
+      infoColocacion.textContent = `Reconectado a partida ${idPartida}. Bienvenido ${validacion.nombre}.`;
+      // Cargar estado actual de la partida
+      mostrarPantalla('preparacion');
+      consultarEstadoApi();
+      return;
+    }
+    // Si no existe, intentar unirse como nuevo jugador
   }
-  const resultado = await unirsePartidaApi(codigo, validacion.nombre);
+  
+  const resultado = await unirsePartidaApi(codigo || null, validacion.nombre);
   if (resultado.ok) {
     mostrarPantalla('preparacion');
   } else {

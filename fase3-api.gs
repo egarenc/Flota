@@ -1,4 +1,4 @@
-const SPREADSHEET_ID = 'TU_SPREADSHEET_ID_AQUI';
+const SPREADSHEET_ID = '1YLqkwchHDlx2Oy4g1F_3ggrPV4CjeGtB_cESAdDLf-w';
 const HOJA_PARTIDAS = 'Partidas';
 const HOJA_TABLEROS = 'Tableros';
 
@@ -21,6 +21,9 @@ function handleRequest(e, method) {
   switch (action) {
     case 'crearPartida':
       response = crearPartida(params);
+      break;
+    case 'verificarPartidaExistente':
+      response = verificarPartidaExistente(params);
       break;
     case 'unirsePartida':
       response = unirsePartida(params);
@@ -64,11 +67,12 @@ function generarCodigoPartida() {
 }
 
 function crearPartida(params) {
-  const jugadorId = params.jugadorId || 'jugador_1';
+  const nombreJugador = params.playerName || 'Jugador';
+  const jugadorId = `jugador_${nombreJugador}_${Date.now()}`;
   const hoja = obtenerHoja(HOJA_PARTIDAS);
   const codigo = generarCodigoUnico(hoja);
   hoja.appendRow([codigo, jugadorId, '', 1, 'Esperando']);
-  return { ok: true, idPartida: codigo, turnoDe: 1, estado: 'Esperando' };
+  return { ok: true, idPartida: codigo, miJugador: 1, turnoDe: 1, estado: 'Esperando' };
 }
 
 function generarCodigoUnico(hoja) {
@@ -84,26 +88,101 @@ function generarCodigoUnico(hoja) {
   return candidato;
 }
 
-function unirsePartida(params) {
-  const codigo = params.idPartida;
-  const jugadorId = params.jugadorId || 'jugador_2';
+function verificarPartidaExistente(params) {
+  const codigoPartida = params.idPartida;
+  const nombreJugador = params.playerName;
   const hoja = obtenerHoja(HOJA_PARTIDAS);
   const datos = hoja.getDataRange().getValues();
 
+  // Buscar la partida con ese código
   for (let i = 1; i < datos.length; i += 1) {
     const fila = datos[i];
-    if (fila[0] === codigo) {
-      if (fila[2]) {
-        return { ok: false, error: 'La partida ya tiene dos jugadores' };
+    if (fila[0] === codigoPartida) {
+      // Verificar si el jugador existe como jugador 1 o jugador 2
+      // Comparar por nombre (considerando formato "jugador_[nombre]_[timestamp]")
+      const jugador1Id = String(fila[1]);
+      const jugador2Id = String(fila[2]);
+      
+      // Extraer nombre de los IDs
+      const extraerNombre = (id) => {
+        const partes = id.split('_');
+        if (partes.length >= 2) {
+          return partes[1]; // Retorna el nombre extraído
+        }
+        return id;
+      };
+      
+      const nombre1 = extraerNombre(jugador1Id);
+      const nombre2 = extraerNombre(jugador2Id);
+      
+      // Si el jugador 1 coincide
+      if (nombre1 === nombreJugador) {
+        return { ok: true, idPartida: codigoPartida, miJugador: 1, estado: fila[4] };
       }
+      
+      // Si el jugador 2 coincide
+      if (nombre2 === nombreJugador) {
+        return { ok: true, idPartida: codigoPartida, miJugador: 2, estado: fila[4] };
+      }
+      
+      // Si la partida existe pero el jugador no está en ella
+      return { ok: false, error: 'Este nombre no está registrado en esa partida' };
+    }
+  }
+  
+  return { ok: false, error: 'Partida no encontrada' };
+}
+
+function extraerNombreDeJugadorId(jugadorId) {
+  const partes = String(jugadorId).split('_');
+  return partes.length >= 2 ? partes[1] : String(jugadorId);
+}
+
+function unirsePartida(params) {
+  const codigoEspecifico = params.idPartida;
+  const nombreJugador = params.playerName || 'Jugador';
+  const jugadorId = `jugador_${nombreJugador}_${Date.now()}`;
+  const hoja = obtenerHoja(HOJA_PARTIDAS);
+  const datos = hoja.getDataRange().getValues();
+
+  // Si se proporciona un código específico, buscar ese
+  if (codigoEspecifico) {
+    for (let i = 1; i < datos.length; i += 1) {
+      const fila = datos[i];
+      if (fila[0] === codigoEspecifico) {
+        const nombre1 = extraerNombreDeJugadorId(fila[1]);
+        if (nombre1 === nombreJugador) {
+          return { ok: false, error: 'No se permite el mismo nombre para los dos jugadores en una partida' };
+        }
+        if (fila[2]) {
+          return { ok: false, error: 'La partida ya tiene dos jugadores' };
+        }
+        hoja.getRange(i + 1, 3).setValue(jugadorId);
+        hoja.getRange(i + 1, 5).setValue('En Curso');
+        hoja.getRange(i + 1, 4).setValue(1);
+        return { ok: true, idPartida: codigoEspecifico, miJugador: 2, jugador1: fila[1], jugador2: jugadorId, estado: 'En Curso', turnoDe: 1 };
+      }
+    }
+    return { ok: false, error: 'Partida no encontrada' };
+  }
+
+  // Si no se proporciona código, buscar la partida más antigua en estado 'Esperando'
+  for (let i = 1; i < datos.length; i += 1) {
+    const fila = datos[i];
+    if (fila[4] === 'Esperando' && !fila[2]) {
+      const nombre1 = extraerNombreDeJugadorId(fila[1]);
+      if (nombre1 === nombreJugador) {
+        continue;
+      }
+      const codigo = fila[0];
       hoja.getRange(i + 1, 3).setValue(jugadorId);
       hoja.getRange(i + 1, 5).setValue('En Curso');
       hoja.getRange(i + 1, 4).setValue(1);
-      return { ok: true, idPartida: codigo, jugador1: fila[1], jugador2: jugadorId, estado: 'En Curso', turnoDe: 1 };
+      return { ok: true, idPartida: codigo, miJugador: 2, jugador1: fila[1], jugador2: jugadorId, estado: 'En Curso', turnoDe: 1 };
     }
   }
 
-  return { ok: false, error: 'Partida no encontrada' };
+  return { ok: false, error: 'No hay partidas abiertas disponibles' };
 }
 
 function guardarTablero(params) {
