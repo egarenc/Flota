@@ -630,6 +630,50 @@ function obtenerBarcoDesde(fila, columna, visited) {
 
 */
 
+/**
+ * Envuelve un tablero existente con ejes de coordenadas tradicionales (A-J, 1-10)
+ * @param {string} idTablero - El ID del elemento HTML del tablero
+ */
+function agregarEjesCoordenadasTradicionales(idTablero) {
+  const tablero = document.getElementById(idTablero);
+  // Si el tablero no existe o ya ha sido envuelto previamente, salimos para evitar duplicados
+  if (!tablero || tablero.parentElement.classList.contains('tablero-con-ejes')) return;
+
+  // 1. Crear el contenedor maestro
+  const wrapper = document.createElement('div');
+  wrapper.className = 'tablero-con-ejes';
+
+  // 2. Crear Eje X (Letras A-J para las Columnas)
+  const letras = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+  const ejeX = document.createElement('div');
+  ejeX.className = 'eje-x';
+  for (let i = 0; i < 10; i++) {
+    const letraDiv = document.createElement('div');
+    letraDiv.textContent = letras[i]; 
+    ejeX.appendChild(letraDiv);
+  }
+
+  // 3. Crear Eje Y (Números 1-10 para las Filas)
+  const ejeY = document.createElement('div');
+  ejeY.className = 'eje-y';
+  for (let i = 1; i <= 10; i++) {
+    const numeroDiv = document.createElement('div');
+    numeroDiv.textContent = i;
+    ejeY.appendChild(numeroDiv);
+  }
+
+  // 4. Reestructurar el árbol HTML (Envolver el tablero sin alterar sus celdas)
+  tablero.parentNode.insertBefore(wrapper, tablero);
+  wrapper.appendChild(ejeX);
+  wrapper.appendChild(ejeY);
+  wrapper.appendChild(tablero); // Al mover el tablero aquí, sus celdas internas se quedan intactas
+}
+
+// Añadir ejes a los tableros de la interfaz
+agregarEjesCoordenadasTradicionales('tablero-preparacion');
+agregarEjesCoordenadasTradicionales('tablero-radar');
+agregarEjesCoordenadasTradicionales('tablero-flota');
+
 btnCrear.addEventListener('click', async () => {
   console.log('[UI] Botón Crear clickeado');
   limpiarErrorInicio();

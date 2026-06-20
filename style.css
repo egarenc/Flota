@@ -448,3 +448,95 @@ button:active {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+
+/* --- Contenedor de Ejes para los Tableros --- */
+.tablero-con-ejes {
+  display: grid;
+  grid-template-columns: 20px 1fr; /* 20px para el Eje Y, el resto para el tablero */
+  grid-template-rows: 20px 1fr;    /* 20px para el Eje X, el resto para el tablero */
+  align-items: stretch;
+  margin-bottom: 15px;
+}
+
+.eje-x {
+  grid-column: 2; /* Se coloca en la 2ª columna */
+  grid-row: 1;    /* Se coloca en la 1ª fila */
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 2px; /* Debe ser igual al gap de tu .tablero */
+  padding: 0 10px; /* Igual al padding de tu .tablero para que alinee perfecto */
+  text-align: center;
+  align-items: end;
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: #a0c2e6;
+  padding-bottom: 4px;
+}
+
+.eje-y {
+  grid-column: 1; /* Se coloca en la 1ª columna */
+  grid-row: 2;    /* Se coloca en la 2ª fila */
+  display: grid;
+  grid-template-rows: repeat(10, 1fr);
+  gap: 2px; /* Debe ser igual al gap de tu .tablero */
+  padding: 10px 0; /* Igual al padding vertical de tu .tablero */
+  text-align: center;
+  align-items: center;
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: #a0c2e6;
+  padding-right: 4px;
+}
+
+/* Modificamos el tablero para que ocupe su lugar en el grid envolvente */
+.tablero-con-ejes .tablero {
+  grid-column: 2;
+  grid-row: 2;
+  margin: 0; /* Quitamos márgenes extra si los tuviera */
+}
+
+/* --- Corrección definitiva del scroll horizontal y ejes en móviles --- */
+@media (max-width: 900px) {
+  /* 1. Anulamos los anchos fijos que fuerzan el scroll */
+  .tablero {
+    min-width: 100% !important; 
+  }
+  
+  /* 2. Reducimos el grosor de los ejes */
+  .tablero-con-ejes {
+    grid-template-columns: 14px 1fr;
+    grid-template-rows: 14px 1fr;
+    margin-bottom: 10px;
+  }
+  
+  .eje-x, .eje-y {
+    font-size: 0.6rem;
+  }
+
+  /* 3. Sincronizamos el padding de las letras con el tablero */
+  .eje-x {
+    padding: 0 10px; /* Igual al padding del .tablero en 900px */
+    padding-bottom: 2px;
+  }
+
+  .eje-y {
+    padding: 10px 0; /* Igual al padding del .tablero en 900px */
+    padding-right: 2px;
+  }
+}
+
+@media (max-width: 640px) {
+  /* En pantallas muy pequeñas, ajustamos aún más los bordes internos */
+  .tablero {
+    padding: 6px !important; 
+  }
+
+  .eje-x {
+    padding: 0 6px !important; /* Sincronizado exacto con el tablero */
+  }
+
+  .eje-y {
+    padding: 6px 0 !important; /* Sincronizado exacto con el tablero */
+  }
+}
