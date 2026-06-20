@@ -228,10 +228,26 @@ function enviarDisparo(params) {
   const barcosRival = JSON.parse(tableroRival.datos[2] || '[]');
   const disparosPropios = JSON.parse(tableroPropio ? tableroPropio.datos[3] || '[]' : '[]');
 
+  // 1. Añadimos el disparo actual temporalmente como pendiente
   disparosPropios.push({ coordenada, resultado: 'pendiente' });
-  const resultado = comprobarImpacto(barcosRival, coordenada, disparosPropios);
-  disparosPropios[disparosPropios.length - 1].resultado = resultado;
+  
+  // 2. Comprobamos el impacto (ahora devuelve un objeto)
+  const analisis = comprobarImpacto(barcosRival, coordenada, disparosPropios);
+  const resultado = analisis.resultado;
 
+  // 3. Actualizamos todos los disparos de este barco si se ha hundido
+  if (resultado === 'hundido' && analisis.coordenadasBarco) {
+    disparosPropios.forEach((disparo) => {
+      if (analisis.coordenadasBarco.includes(disparo.coordenada)) {
+        disparo.resultado = 'hundido';
+      }
+    });
+  } else {
+    // Si es tocado o fallo, solo actualizamos el último disparo
+    disparosPropios[disparosPropios.length - 1].resultado = resultado;
+  }
+
+  // 4. Guardado en la base de datos de Sheets
   if (tableroPropio) {
     hojaTableros.getRange(tableroPropio.fila, 4).setValue(JSON.stringify(disparosPropios));
   } else {
@@ -314,13 +330,30 @@ function comprobarImpacto(barcos, coordenada, disparos) {
   }
 
   if (!barcoEncontrado) {
-    return 'fallo';
+    return { resultado: 'fallo', coordenadasBarco: null };
   }
 
   const impactosEnBarco = barcoEncontrado.coordenadas.filter((coord) => disparosAcertados.includes(coord));
+  
   if (impactosEnBarco.length >= barcoEncontrado.coordenadas.length) {
-    return 'hundido';
+    return { resultado: 'hundido', coordenadasBarco: barcoEncontrado.coordenadas };
   }
 
-  return 'tocado';
+  return { resultado: 'tocado', coordenadasBarco: barcoEncontrado.coordenadas };
+}
+
+function verificarDerrota(jsonBarcos, jsonDisparos) {
+  const barcos = JSON.parse(jsonBarcos || '[]');
+  const disparos = JSON.parse(jsonDisparos || '[]');
+  
+  // Aplanamos todas las coordenadas de los barcos
+  const todasCoordsBarcos = barcos.flatMap(b => b.coordenadas);
+  
+  // Filtramos solo los disparos que impactaron y hundieron
+  const coordsHundidas = disparos
+    .filter(d => d.resultado === 'hundido')
+    .map(d => d.coordenada);
+    
+  // Si todas las coordenadas de barcos están en la lista de hundidas, el jugador perdió
+  return todasCoordsBarcos.every(coord => coordsHundidas.includes(coord));
 }
