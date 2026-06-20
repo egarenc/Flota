@@ -1,12 +1,12 @@
 :root {
-  --fondo: #0c2440;
-  --panel: #122f55;
+  --fondo: #ffd102;
+  --panel: #033768;
   --texto: #f5f8ff;
   --agua: #5aa8ff;
   --barco: #9ba1a8;
   --tocado: #d84f4f;
   --hundido: #8b2525;
-  --fallo: #f5f5f5;
+  --fallo: #042b97;
   --borde: #1d496e;
 }
 
@@ -18,7 +18,12 @@ html, body {
   margin: 0;
   min-height: 100%;
   font-family: Inter, system-ui, sans-serif;
-  background: radial-gradient(circle at top, #184d87 0%, #081620 80%);
+  background: radial-gradient(circle at top, #23a166 0%, rgb(240, 116, 15) 80%);
+  background-image: url('background.jpg');
+  background-size: cover;       /* Hace que la imagen cubra toda la pantalla */
+  background-position: center;  /* Centra la imagen */
+  background-repeat: no-repeat; /* Evita que la imagen se duplique en mosaico */
+  background-attachment: fixed; /* Mantiene el fondo fijo al hacer scroll */
   color: var(--texto);
 }
 
@@ -46,7 +51,7 @@ body {
 }
 
 .panel {
-  background: rgba(8, 24, 44, 0.92);
+  background: var(--panel);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 24px;
   padding: 28px;
@@ -252,7 +257,6 @@ button:active {
 
 .celda.fallo {
   background: var(--fallo);
-  color: #1c293d;
 }
 
 .celda.tocado::after {
@@ -262,6 +266,11 @@ button:active {
 
 .celda.hundido::after {
   content: "💀";
+  font-weight: 900;
+}
+
+.celda.fallo::after {
+  content: "💦";
   font-weight: 900;
 }
 

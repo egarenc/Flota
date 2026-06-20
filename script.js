@@ -93,7 +93,7 @@ function crearTablero(contenedor, matriz, conEtiquetas = false, esRadar = false)
         celda.innerHTML = contenido;
       } else {
         if (conEtiquetas) {
-          celda.textContent = String.fromCharCode(65 + fila) + (columna + 1);
+        // celda.textContent = String.fromCharCode(65 + fila) + (columna + 1);
         }
       }
 
@@ -462,6 +462,10 @@ function actualizarNombreBatalla() {
   const nombreLabel = document.getElementById('nombre-jugador-batalla');
   if (nombreLabel) {
     nombreLabel.textContent = miNombre ? `Jugador: ${miNombre}` : '';
+  }
+  const displayId = document.getElementById('display-id-partida');
+  if (displayId && idPartida) {
+    displayId.textContent = ` (Cód. partida: ${idPartida})`;
   }
 }
 
