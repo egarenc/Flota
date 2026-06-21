@@ -30,6 +30,7 @@ const inputNombre = document.getElementById('nombre-jugador');
 const errorNombre = document.getElementById('error-nombre');
 const errorUnirse = document.getElementById('error-unirse');
 const inputCodigo = document.getElementById('codigo-partida');
+const displayId = document.getElementById('display-id-partida');
 let orientacionArrastrable = 'horizontal';
 
 const barcosDisponibles = [
@@ -64,6 +65,9 @@ function mostrarPantalla(nombre) {
 
 // Sustituye tu función crearTablero actual por esta:
 function crearTablero(contenedor, matriz, conEtiquetas = false, esRadar = false) {
+        if (displayId && idPartida) {
+          displayId.textContent = ` (Cód. partida: ${idPartida})`;
+        }
   contenedor.innerHTML = '';
   for (let fila = 0; fila < 10; fila += 1) {
     for (let columna = 0; columna < 10; columna += 1) {
@@ -95,11 +99,12 @@ function crearTablero(contenedor, matriz, conEtiquetas = false, esRadar = false)
         celda.innerHTML = contenido;
       } else {
         if (conEtiquetas) {
-          celda.textContent = String.fromCharCode(65 + fila) + (columna + 1); // Etiquetas para radar o flota
+          //celda.textContent = String.fromCharCode(65 + fila) + (columna + 1); // Etiquetas para radar o flota
         }
       }
 
       if (contenedor === tableroPreparacion) {
+        
         // EVENT LISTENER: Al hacer clic (para remover barcos)
         celda.addEventListener('click', () => handlePreparacionClick(fila, columna));
 
@@ -570,8 +575,7 @@ function actualizarNombreBatalla() {
   if (nombreLabel) {
     nombreLabel.textContent = miNombre ? `Jugador: ${miNombre}` : '';
   }
-  const displayId = document.getElementById('display-id-partida');
-  if (displayId && idPartida) {
+    if (displayId && idPartida) {
     displayId.textContent = ` (Cód. partida: ${idPartida})`;
   }
 }
