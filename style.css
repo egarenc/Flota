@@ -540,3 +540,62 @@ button:active {
     padding: 6px 0 !important; /* Sincronizado exacto con el tablero */
   }
 }
+
+/* --- Añadir en style.css --- */
+
+/* Estilos para el contenedor de gráficos de barcos */
+.lista-barcos-items {
+  display: flex; /* Cambiamos a flex para alinear los gráficos de los barcos */
+  flex-direction: column; /* Apilamos verticalmente */
+  gap: 16px; /* Espacio entre gráficos */
+}
+
+/* El elemento gráfico del barco */
+.barco-grafico {
+  display: flex; /* Para alinear las celdas gráficas */
+  gap: 1px; /* Espacio fino entre celdas */
+  cursor: grab; /* Indica que se puede arrastrar */
+  user-select: none; /* Evita selección de texto */
+  transition: transform 0.1s ease, opacity 0.1s ease; /* Transiciones suaves */
+}
+
+/* Al arrastrar, cambiamos el cursor */
+.barco-grafico:active {
+  cursor: grabbing;
+}
+
+/* Al iniciar el arrastre, hacemos el elemento original semitransparente */
+.barco-grafico.dragging {
+  opacity: 0.4;
+}
+
+/* Estilo para cada celda que compone el gráfico del barco (idéntico a .celda.barco) */
+.barco-grafico-celda {
+  width: 32px; /* Tamaño fijo para el gráfico */
+  height: 32px;
+  background: var(--barco); /* Color marrón grisáceo */
+  border-radius: 4px; /* Bordes redondeados */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Emojis idénticos para las celdas del gráfico (🚢) */
+.barco-grafico-celda .emoji {
+  font-size: 1.15rem; /* Tamaño del emoji */
+}
+
+/* --- Feedback visual en el tablero al arrastrar --- */
+
+/* Celda sobre la que se arrastra, indicando posición válida */
+.celda.hover-drop {
+  outline: 2px solid #a8ffb2; /* Borde verde claro */
+  outline-offset: -2px; /* Borde hacia adentro */
+}
+
+/* Celda sobre la que se arrastra, indicando posición inválida (solapamiento o límites) */
+.celda.hover-drop-invalid {
+  outline: 2px solid #ffcccc; /* Borde rojo claro */
+  outline-offset: -2px; /* Borde hacia adentro */
+  background: rgba(255, 100, 100, 0.2); /* Fondo rojizo semitransparente */
+}

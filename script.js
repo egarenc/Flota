@@ -20,6 +20,7 @@ const inputNombre = document.getElementById('nombre-jugador');
 const errorNombre = document.getElementById('error-nombre');
 const errorUnirse = document.getElementById('error-unirse');
 const inputCodigo = document.getElementById('codigo-partida');
+let orientacionArrastrable = 'horizontal';
 
 const barcosDisponibles = [
   { id: 'portaaviones', tamaño: 4, disponibles: 1, colocados: 0, label: '1 x 4 casillas' },
@@ -51,81 +52,204 @@ function mostrarPantalla(nombre) {
   pantallas[nombre].classList.add('activa');
 }
 
+// Sustituye tu función crearTablero actual por esta:
 function crearTablero(contenedor, matriz, conEtiquetas = false, esRadar = false) {
   contenedor.innerHTML = '';
   for (let fila = 0; fila < 10; fila += 1) {
     for (let columna = 0; columna < 10; columna += 1) {
       const celda = document.createElement('div');
       const valor = matriz[fila][columna];
-      celda.className = `celda ${valor}`;
-      celda.dataset.coordenada = `${fila}-${columna}`;
+      celda.className = `celda ${valor}`; // Clase celda
+      celda.dataset.coordenada = `${fila}-${columna}`; // Coordenada de la celda
 
-      // Si la celda contiene un barco y no es el radar, pintar un emoticono según
-      // si es la primera/última/medio celda del barco.
+      // Si la celda contiene un barco y no es el radar
       if (valor === 'barco' && !esRadar) {
-        const barco = obtenerBarcoEnPosicion(fila, columna);
+        const barco = obtenerBarcoEnPosicion(fila, columna); // Barco en esta posición
         let contenido = '';
         if (barco) {
-          const posiciones = barco.posiciones;
-          const indice = posiciones.findIndex(([r, c]) => r === fila && c === columna);
-          const longitud = posiciones.length;
+          const posiciones = barco.posiciones; // Posiciones del barco
+          const indice = posiciones.findIndex(([r, c]) => r === fila && c === columna); // Índice de esta celda
+          const longitud = posiciones.length; // Longitud total del barco
           let emoji = '';
           let flip = false;
 
-          if (longitud === 1) {
-            emoji = '🚢';
-          } else if (indice === 0) {
-            emoji = '🚢';
-          } else if (indice === longitud - 1) {
-            emoji = '🚢';
-            flip = true; // voltear verticalmente la última celda
-          } else if (longitud >= 3) {
-            emoji = '↔️';
-          }
+          if (longitud === 1) emoji = '🚢';
+          else if (indice === 0) emoji = '🚢';
+          else if (indice === longitud - 1) { emoji = '🚢'; flip = true; }
+          else if (longitud >= 3) emoji = '↔️'; // Emoji para celdas centrales
 
           if (emoji) {
-            contenido = `<span class="emoji${flip ? ' flip' : ''}">${emoji}</span>`;
+            contenido = `<span class="emoji${flip ? ' flip' : ''}">${emoji}</span>`; // Añadimos emoji
           }
-        } else {
-          // Fallback genérico
-          contenido = `<span class="emoji">🚢</span>`;
         }
         celda.innerHTML = contenido;
       } else {
         if (conEtiquetas) {
-        // celda.textContent = String.fromCharCode(65 + fila) + (columna + 1);
+          celda.textContent = String.fromCharCode(65 + fila) + (columna + 1); // Etiquetas para radar o flota
         }
       }
 
       if (contenedor === tableroPreparacion) {
+        // EVENT LISTENER: Al hacer clic (para remover barcos)
         celda.addEventListener('click', () => handlePreparacionClick(fila, columna));
+
+        // EVENT LISTENER: Al arrastrar un barco sobre la celda
+        celda.addEventListener('dragover', (e) => {
+          e.preventDefault(); // Permitir el drop
+          if (!barcoSeleccionado) return; // Si no hay barco seleccionado, no hacemos nada
+          
+          // feedback visual de drop válido/inválido
+          const coordenadasPotential = obtenerCoordenadasBarco(fila, columna, barcoSeleccionado.tamaño, orientacionArrastrable); // Coordenadas potenciales
+          if (!coordenadasPotential) return; // Si no hay coordenadas, no hacemos nada
+          
+          // Verificamos si la posición es válida
+          const esValido = coordenadasPotential.every(([r, c]) => miTablero[r][c] === 'agua'); // Comprobamos si hay agua
+          
+          if (esValido) {
+            celda.classList.add('hover-drop'); // Clase CSS drop válido
+            celda.classList.remove('hover-drop-invalid'); // Clase CSS drop inválido
+          } else {
+            celda.classList.remove('hover-drop'); // Clase CSS drop válido
+            celda.classList.add('hover-drop-invalid'); // Clase CSS drop inválido
+          }
+        });
+
+        // EVENT LISTENER: Al dejar de arrastrar sobre la celda
+        celda.addEventListener('dragleave', () => {
+          celda.classList.remove('hover-drop', 'hover-drop-invalid'); // Quitamos feedback visual
+        });
+
+        // EVENT LISTENER: Al soltar el barco sobre la celda
+        celda.addEventListener('drop', (e) => {
+          e.preventDefault(); // Permitir el drop
+          celda.classList.remove('hover-drop', 'hover-drop-invalid'); // Quitamos feedback visual
+
+          if (!barcoSeleccionado) return; // Si no hay barco seleccionado, no hacemos nada
+          
+          // Intentamos colocar el barco
+          const colocacionCorrecta = colocarBarco(fila, columna, barcoSeleccionado.tamaño, orientacionArrastrable, barcoSeleccionado.id); // Colocamos barco
+          
+          if (colocacionCorrecta) {
+            barcoSeleccionado.colocados += 1; // Incrementamos contador de barcos colocados
+            
+            // Si el barco ya se ha colocado completamente
+            if (barcoSeleccionado.colocados >= barcoSeleccionado.disponibles) {
+              if (todosLosBarcosSonColocados()) {
+                barcoSeleccionado = null; // Barcos colocados
+                infoColocacion.textContent = 'Adelante, vamos al ataque.'; // Info colocación
+                actualizarTituloBarcos(); // Actualizar título barcos
+              } else {
+                barcoSeleccionado = null; // Limpiamos barcoSeleccionado
+                infoColocacion.textContent = 'Barco colocado. Elige otro barco.'; // Info colocación
+              }
+            } else {
+              infoColocacion.textContent = 'Barco colocado. Coloca otro del mismo tipo o elige otro.'; // Info colocación
+            }
+            
+            renderListaBarcos(); // Volvemos a renderizar la lista de barcos
+            renderTableros(); // Volvemos a renderizar el tablero
+          } else {
+            infoColocacion.textContent = 'No se puede colocar el barco ahí. Verifica el espacio y evita solapamientos.'; // Info colocación
+          }
+        });
       }
 
       if (esRadar) {
-        celda.addEventListener('click', () => handleRadarClick(fila, columna));
+        celda.addEventListener('click', () => handleRadarClick(fila, columna)); // Clic para radar
       }
 
-      contenedor.appendChild(celda);
+      contenedor.appendChild(celda); // Añadimos celda al contenedor
     }
   }
 }
 
+// Sustituye tu función renderListaBarcos actual por esta:
 function renderListaBarcos() {
-  listaBarcosDiv.innerHTML = '';
+  listaBarcosDiv.innerHTML = ''; // Limpiamos contenedor
+  
   barcosDisponibles.forEach((barco) => {
-    const item = document.createElement('button');
-    item.type = 'button';
-    item.className = 'barco-item';
-    if (barcoSeleccionado && barcoSeleccionado.id === barco.id) {
-      item.classList.add('seleccionado');
-    }
-    const orientacionEmoji = orientacion === 'horizontal' ? '⬅️➡️' : '⬆️⬇️';
-    const indicadorOrientacion = barcoSeleccionado && barcoSeleccionado.id === barco.id ? ` ${orientacionEmoji}` : '';
-    item.textContent = `${barco.label} — disponibles: ${barco.disponibles - barco.colocados}${indicadorOrientacion}`;
-    item.disabled = barco.colocados >= barco.disponibles;
-    item.addEventListener('click', () => seleccionarBarco(barco.id));
-    listaBarcosDiv.appendChild(item);
+    const isPlaced = barco.colocados >= barco.disponibles; // Barco ya colocado
+    if (isPlaced) return; // Si ya está colocado, no lo renderizamos en la lista
+
+    // Contenedor para el gráfico y la etiqueta
+    const itemContainer = document.createElement('div');
+    itemContainer.className = 'barco-item-container'; // Nueva clase para flexbox
+
+    // El gráfico del barco
+    const shipGraphic = createShipGraphic(barco.tamaño, orientacionArrastrable, barco.id);
+    
+    // Label de información
+    const label = document.createElement('div');
+    label.className = 'barco-item-label';
+    label.textContent = `${barco.label} — disponibles: ${barco.disponibles - barco.colocados}`;
+
+    itemContainer.appendChild(shipGraphic); // Añadimos gráfico
+    itemContainer.appendChild(label); // Añadimos etiqueta
+    
+    listaBarcosDiv.appendChild(itemContainer); // Añadimos al contenedor principal
   });
+}
+
+// NUEVA FUNCIÓN: Crea el gráfico arrastrable de un barco
+function createShipGraphic(size, orientation, shipId) {
+  const graphic = document.createElement('div');
+  graphic.className = `barco-grafico ${orientation}`; // Clases barco-grafico y orientación
+  graphic.draggable = true; // Hacemos el elemento arrastrable
+  graphic.dataset.tipo = shipId; // Almacenamos el ID de la tipología del barco
+  graphic.dataset.tamaño = size; // Almacenamos el tamaño del barco
+  
+  // Establecer dimensiones para asegurar que el gráfico tenga el tamaño correcto
+  const celdaWidth = 32; // Ancho fijo por celda gráfica
+  const celdaGap = 1; // Gap fino por celda gráfica
+  const totalCeldasSize = size * celdaWidth + (size - 1) * celdaGap; // Tamaño total de las celdas gráficas
+  
+  if (orientation === 'horizontal') {
+    graphic.style.width = `${totalCeldasSize}px`; // Ancho total para horizontal
+    graphic.style.height = `${celdaWidth}px`; // Alto total para horizontal
+  } else {
+    graphic.style.width = `${celdaWidth}px`; // Ancho total para vertical
+    graphic.style.height = `${totalCeldasSize}px`; // Alto total para vertical
+  }
+
+  // Creamos cada celda gráfica del barco
+  for (let i = 0; i < size; i++) {
+    const celda = document.createElement('div');
+    celda.className = 'barco-grafico-celda'; // Clase barco-grafico-celda
+    celda.dataset.offset = i; // Guardamos el offset de la celda gráfica
+    
+    // Añadimos emojis idénticos (🚢)
+    let emoji = '';
+    let flip = false;
+    
+    if (size === 1) emoji = '🚢';
+    else if (i === 0) emoji = '🚢';
+    else if (i === size - 1) { emoji = '🚢'; flip = true; }
+    else if (size >= 3) emoji = '↔️'; // Emoji para celdas centrales
+
+    if (emoji) {
+      celda.innerHTML = `<span class="emoji${flip ? ' flip' : ''}">${emoji}</span>`; // Añadimos emoji
+    }
+    
+    graphic.appendChild(celda); // Añadimos celda gráfica
+  }
+
+  // EVENT LISTENER: Al iniciar el arrastre
+  graphic.addEventListener('dragstart', (e) => {
+    graphic.classList.add('dragging'); // Clase CSS dragging
+    // Guardamos los datos críticos para el drop en el DataTransfer
+    e.dataTransfer.setData('text/plain', shipId); // ID del barco
+    e.dataTransfer.setData('tamaño', size); // Tamaño del barco
+    e.dataTransfer.effectAllowed = 'move'; // Indicamos que es un movimiento
+    barcoSeleccionado = barcosDisponibles.find(b => b.id === shipId); // Establecemos barcoSeleccionado
+  });
+
+  // EVENT LISTENER: Al terminar el arrastre
+  graphic.addEventListener('dragend', () => {
+    graphic.classList.remove('dragging'); // Quitamos clase CSS dragging
+    barcoSeleccionado = null; // Limpiamos barcoSeleccionado
+  });
+
+  return graphic;
 }
 
 function seleccionarBarco(id) {
@@ -160,10 +284,12 @@ function obtenerSiguienteBarcoDisponible(idActual) {
   return null;
 }
 
+// Sustituye tu función alternarOrientacion actual por esta:
 function alternarOrientacion() {
-  orientacion = orientacion === 'horizontal' ? 'vertical' : 'horizontal';
-  btnOrientacion.textContent = `Orientación: ${orientacion.charAt(0).toUpperCase() + orientacion.slice(1)}`;
-  renderListaBarcos(); // Actualizar el emoji de orientación en el botón seleccionado
+  orientacion = orientacion === 'horizontal' ? 'vertical' : 'horizontal'; // Alternamos orientación
+  btnOrientacion.textContent = `Orientación: ${orientacion.charAt(0).toUpperCase() + orientacion.slice(1)}`; // Actualizamos botón
+  orientacionArrastrable = orientacion; // Sincronizamos la nueva orientación para los barcos gráficos
+  renderListaBarcos(); // Volvemos a renderizar los gráficos de los barcos con la nueva orientación
 }
 
 function actualizarTituloBarcos() {
@@ -176,45 +302,16 @@ function actualizarTituloBarcos() {
 function handlePreparacionClick(fila, columna) {
   // Primero verificar si hay un barco colocado en esa posición para removerlo
   if (miTablero[fila][columna] === 'barco') {
-    if (removerBarcoDelTablero(fila, columna)) {
-      infoColocacion.textContent = 'Barco removido. Vuelve a colocarlo o elige otro.';
-      renderListaBarcos();
-      renderTableros();
+    if (removerBarcoDelTablero(fila, columna)) { // Removemos barco
+      infoColocacion.textContent = 'Barco removido. Vuelve a colocarlo o elige otro.'; 
+      renderListaBarcos(); 
+      renderTableros(); 
       return;
     }
   }
-
-  if (!barcoSeleccionado) {
-    infoColocacion.textContent = 'Selecciona primero un barco para colocar.';
-    return;
-  }
-
-  if (colocarBarco(fila, columna, barcoSeleccionado.tamaño, orientacion, barcoSeleccionado.id)) {
-    barcoSeleccionado.colocados += 1;
-    if (barcoSeleccionado.colocados >= barcoSeleccionado.disponibles) {
-      const idAnterior = barcoSeleccionado.id;
-      const siguienteBarco = obtenerSiguienteBarcoDisponible(idAnterior);
-      
-      if (todosLosBarcosSonColocados()) {
-        barcoSeleccionado = null;
-        infoColocacion.textContent = 'Adelante, vamos al ataque.';
-        actualizarTituloBarcos();
-      } else if (siguienteBarco) {
-        barcoSeleccionado = siguienteBarco;
-        infoColocacion.textContent = `Barco colocado. Siguiente: ${siguienteBarco.label}. Coloca un barco de ${siguienteBarco.tamaño} casillas.`;
-      } else {
-        barcoSeleccionado = null;
-        infoColocacion.textContent = 'Barco colocado. Elige otro barco.';
-      }
-    } else {
-      infoColocacion.textContent = 'Barco colocado. Coloca otro del mismo tipo o elige otro.';
-    }
-  } else {
-    infoColocacion.textContent = 'No se puede colocar el barco ahí. Verifica el espacio y evita solapamientos.';
-  }
-
-  renderListaBarcos();
-  renderTableros();
+  
+  // Con el sistema Drag & Drop, no hacemos nada más al hacer clic.
+  // Toda la lógica antigua de colocación se ha eliminado.
 }
 
 function handleRadarClick(fila, columna) {
@@ -745,7 +842,8 @@ btnOrientacion.addEventListener('click', alternarOrientacion);
 renderListaBarcos();
 renderTableros();
 
-// Preseleccionar el primer barco disponible
-barcoSeleccionado = barcosDisponibles[0];
-infoColocacion.textContent = `Coloca un barco de ${barcoSeleccionado.tamaño} casillas.`;
-renderListaBarcos();
+// ELIMINAR O COMENTAR estas líneas al final de script.js
+// // Preseleccionar el primer barco disponible
+// barcoSeleccionado = barcosDisponibles[0];
+// infoColocacion.textContent = `Coloca un barco de ${barcoSeleccionado.tamaño} casillas.`;
+// renderListaBarcos();
