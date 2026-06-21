@@ -33,10 +33,10 @@ const inputCodigo = document.getElementById('codigo-partida');
 let orientacionArrastrable = 'horizontal';
 
 const barcosDisponibles = [
-  { id: 'portaaviones', tamaño: 4, disponibles: 1, colocados: 0, label: '1 x 4 casillas' },
-  { id: 'acorazado', tamaño: 3, disponibles: 2, colocados: 0, label: '2 x 3 casillas' },
-  { id: 'fragata', tamaño: 2, disponibles: 3, colocados: 0, label: '3 x 2 casillas' },
-  { id: 'caza', tamaño: 1, disponibles: 4, colocados: 0, label: '4 x 1 casilla' },
+  { id: 'portaaviones', tamaño: 4, disponibles: 1, colocados: 0, label: '4 casillas' },
+  { id: 'acorazado', tamaño: 3, disponibles: 2, colocados: 0, label: '3 casillas' },
+  { id: 'fragata', tamaño: 2, disponibles: 3, colocados: 0, label: '2 casillas' },
+  { id: 'caza', tamaño: 1, disponibles: 4, colocados: 0, label: '1 casilla' },
 ];
 
 function todosLosBarcosSonColocados() {
