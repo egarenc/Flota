@@ -1,3 +1,13 @@
+// Activar Polyfill para móviles (configuración simplificada)
+MobileDragDrop.polyfill({
+  // Mantiene presionado 200ms para iniciar el arrastre (evita conflictos con clics normales)
+  holdToDrag: 200 
+});
+
+// Evitar comportamientos de scroll no deseados en móviles durante el arrastre
+window.addEventListener('touchmove', function() {}, { passive: false });
+
+// ... aquí sigue el resto de tu código (const API_URL = ... etc)
 const API_URL = 'https://script.google.com/macros/s/AKfycbzEcW9ek3xWralEFrfSyPir1vgnMVBHa9Xo3MmEydHrs3dD4jnYDGErv34QW_eJSBzi/exec';
 
 const pantallas = {

@@ -557,6 +557,7 @@ button:active {
   cursor: grab; /* Indica que se puede arrastrar */
   user-select: none; /* Evita selección de texto */
   transition: transform 0.1s ease, opacity 0.1s ease; /* Transiciones suaves */
+  touch-action: none;
 }
 
 /* Al arrastrar, cambiamos el cursor */
