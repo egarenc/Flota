@@ -19,8 +19,7 @@ const pantallas = {
 const tableroPreparacion = document.getElementById('tablero-preparacion');
 const tableroFlota = document.getElementById('tablero-flota');
 const tableroRadar = document.getElementById('tablero-radar');
-const btnCrear = document.getElementById('btn-crear');
-const btnUnirse = document.getElementById('btn-unirse');
+const btnJugar = document.getElementById('btn-jugar');
 const btnListo = document.getElementById('btn-listo');
 const btnOrientacion = document.getElementById('btn-orientacion');
 const listaBarcosDiv = document.getElementById('lista-barcos-disponibles');
@@ -78,23 +77,29 @@ function crearTablero(contenedor, matriz, conEtiquetas = false, esRadar = false)
 
       // Si la celda contiene un barco y no es el radar
       if (valor === 'barco' && !esRadar) {
-        const barco = obtenerBarcoEnPosicion(fila, columna); // Barco en esta posición
+        const barco = obtenerBarcoEnPosicion(fila, columna); 
         let contenido = '';
         if (barco) {
-          const posiciones = barco.posiciones; // Posiciones del barco
-          const indice = posiciones.findIndex(([r, c]) => r === fila && c === columna); // Índice de esta celda
-          const longitud = posiciones.length; // Longitud total del barco
-          let emoji = '';
-          let flip = false;
+          const posiciones = barco.posiciones; 
+          const indice = posiciones.findIndex(([r, c]) => r === fila && c === columna); 
+          const longitud = posiciones.length; 
+          
+          // Determinamos inteligentemente el segmento del SVG
+          let tipoParte = 'medio';
+          if (longitud === 1) tipoParte = 'unico';
+          else if (indice === 0) tipoParte = 'popa';
+          else if (indice === longitud - 1) tipoParte = 'proa';
 
-          if (longitud === 1) emoji = '🚢';
-          else if (indice === 0) emoji = '🚢';
-          else if (indice === longitud - 1) { emoji = '🚢'; flip = true; }
-          else if (longitud >= 3) emoji = '↔️'; // Emoji para celdas centrales
-
-          if (emoji) {
-            contenido = `<span class="emoji${flip ? ' flip' : ''}">${emoji}</span>`; // Añadimos emoji
+          // Calculamos la orientación analizando sus coordenadas
+          let esVertical = false;
+          if (longitud > 1) {
+            esVertical = posiciones[0][1] === posiciones[1][1]; // Si mantienen la misma columna, es vertical
           }
+          const claseOrientacion = esVertical ? 'barco-vertical' : 'barco-horizontal';
+
+          contenido = `<div class="contenedor-svg-barco ${claseOrientacion}" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+                         ${obtenerSvgBarco(tipoParte)}
+                       </div>`;
         }
         celda.innerHTML = contenido;
       } else {
@@ -229,23 +234,20 @@ function createShipGraphic(size, orientation, shipId) {
   // Creamos cada celda gráfica del barco
   for (let i = 0; i < size; i++) {
     const celda = document.createElement('div');
-    celda.className = 'barco-grafico-celda'; // Clase barco-grafico-celda
-    celda.dataset.offset = i; // Guardamos el offset de la celda gráfica
+    celda.className = 'barco-grafico-celda'; 
+    celda.dataset.offset = i; 
     
-    // Añadimos emojis idénticos (🚢)
-    let emoji = '';
-    let flip = false;
-    
-    if (size === 1) emoji = '🚢';
-    else if (i === 0) emoji = '🚢';
-    else if (i === size - 1) { emoji = '🚢'; flip = true; }
-    else if (size >= 3) emoji = '↔️'; // Emoji para celdas centrales
+    // Determinamos qué segmento inyectar en la lista lateral
+    let tipoParte = 'medio';
+    if (size === 1) tipoParte = 'unico';
+    else if (i === 0) tipoParte = 'popa';
+    else if (i === size - 1) tipoParte = 'proa';
 
-    if (emoji) {
-      celda.innerHTML = `<span class="emoji${flip ? ' flip' : ''}">${emoji}</span>`; // Añadimos emoji
-    }
+    celda.innerHTML = `<div class="contenedor-svg-barco" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+                         ${obtenerSvgBarco(tipoParte)}
+                       </div>`;
     
-    graphic.appendChild(celda); // Añadimos celda gráfica
+    graphic.appendChild(celda); 
   }
 
   // EVENT LISTENER: Al iniciar el arrastre
@@ -579,6 +581,50 @@ function actualizarNombreBatalla() {
     displayId.textContent = ` (Cód. partida: ${idPartida})`;
   }
 }
+// Generador de SVGs Cenitales de alta calidad
+function obtenerSvgBarco(tipoParte) {
+  // Colores base: Casco gris oscuro metalizado, detalles en gris azulado
+  const defs = `<defs>
+    <linearGradient id="cascoGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#64748B"/>
+      <stop offset="100%" stop-color="#334155"/>
+    </linearGradient>
+  </defs>`;
+
+  switch (tipoParte) {
+    case 'unico': // Submarino / Lancha rápida (1 casilla)
+      return `<svg class="svg-barco" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        ${defs}
+        <path d="M15 35 C15 20 25 25 40 25 L65 25 C85 25 90 50 90 50 C90 50 85 75 65 75 L40 75 C25 75 15 80 15 65 Z" fill="url(#cascoGrad)" stroke="#0F172A" stroke-width="2"/>
+        <ellipse cx="50" cy="50" rx="12" ry="8" fill="#1E293B"/>
+        <rect x="25" y="45" width="10" height="10" fill="#94A3B8" rx="2"/>
+      </svg>`;
+    
+    case 'popa': // Parte trasera (Motor/Hélices)
+      return `<svg class="svg-barco" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        ${defs}
+        <path d="M15 35 C15 25 25 25 40 25 L100 25 L100 75 L40 75 C25 75 15 75 15 65 Z" fill="url(#cascoGrad)" stroke="#0F172A" stroke-width="2"/>
+        <rect x="25" y="35" width="25" height="30" rx="4" fill="#475569" stroke="#0F172A"/>
+        <circle cx="35" cy="50" r="8" fill="#1E293B"/>
+      </svg>`;
+
+    case 'medio': // Parte central (Cañones)
+      return `<svg class="svg-barco" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        ${defs}
+        <rect x="0" y="25" width="100" height="50" fill="url(#cascoGrad)" stroke="#0F172A" stroke-width="2" stroke-dasharray="0 100 0 100"/>
+        <circle cx="50" cy="50" r="16" fill="#475569" stroke="#0F172A" stroke-width="2"/>
+        <line x1="50" y1="50" x2="90" y2="50" stroke="#0F172A" stroke-width="5" stroke-linecap="round"/>
+      </svg>`;
+
+    case 'proa': // Parte delantera (Puntiaguda)
+      return `<svg class="svg-barco" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        ${defs}
+        <path d="M0 25 L65 25 C85 25 95 50 95 50 C95 50 85 75 65 75 L0 75 Z" fill="url(#cascoGrad)" stroke="#0F172A" stroke-width="2"/>
+        <polygon points="20,35 55,50 20,65" fill="#475569" stroke="#0F172A" stroke-width="1.5" stroke-linejoin="round"/>
+      </svg>`;
+  }
+  return '';
+}
 
 function renderTableros() {
   crearTablero(tableroPreparacion, miTablero);
@@ -785,55 +831,47 @@ agregarEjesCoordenadasTradicionales('tablero-preparacion');
 agregarEjesCoordenadasTradicionales('tablero-radar');
 agregarEjesCoordenadasTradicionales('tablero-flota');
 
-btnCrear.addEventListener('click', async () => {
-  console.log('[UI] Botón Crear clickeado');
+btnJugar.addEventListener('click', async () => {
+  console.log('[UI] Botón Jugar clickeado');
   limpiarErrorInicio();
   const validacion = validarNombreJugador();
   if (!validacion.ok) {
     mostrarErrorInicio(validacion.error);
     return;
   }
-  const resultado = await crearPartidaApi(validacion.nombre);
-  console.log('[UI] Resultado de crearPartidaApi:', resultado);
-  if (resultado.ok) {
-    console.log('[UI] Cambio a pantalla preparacion');
-    mostrarPantalla('preparacion');
-  } else {
-    console.error('[UI] Error al crear partida:', resultado.error);
-  }
-});
 
-btnUnirse.addEventListener('click', async () => {
-  limpiarErrorInicio();
-  const validacion = validarNombreJugador();
-  if (!validacion.ok) {
-    mostrarErrorInicio(validacion.error);
+  // Cambiamos el texto para dar feedback al usuario
+  btnJugar.textContent = 'Buscando partida...';
+  btnJugar.disabled = true;
+
+  // 1. Intentamos unirnos a una partida abierta (sin código)
+  const resultadoUnirse = await unirsePartidaApi(null, validacion.nombre);
+  
+  if (resultadoUnirse.ok) {
+    console.log('[UI] Unidos a partida existente:', resultadoUnirse.idPartida);
+    idPartida = resultadoUnirse.idPartida;
+    miJugador = resultadoUnirse.miJugador;
+    miNombre = validacion.nombre;
+    infoColocacion.textContent = `¡Unido a la partida ${idPartida}! Coloca tu flota.`;
+    mostrarPantalla('preparacion');
+    btnJugar.textContent = 'Jugar / Buscar Partida';
+    btnJugar.disabled = false;
     return;
   }
-  const codigo = inputCodigo.value.trim().toUpperCase();
+
+  // 2. Si no hay partidas disponibles, creamos una nueva
+  console.log('[UI] No hay partidas abiertas, creando una nueva...');
+  const resultadoCrear = await crearPartidaApi(validacion.nombre);
   
-  if (codigo) {
-    const resultadoVerificacion = await verificarPartidaExistenteApi(codigo, validacion.nombre);
-    if (resultadoVerificacion.ok) {
-      idPartida = resultadoVerificacion.idPartida;
-      miJugador = resultadoVerificacion.miJugador;
-      miNombre = validacion.nombre;
-      infoColocacion.textContent = `Reconectado a partida ${idPartida}. Bienvenido ${validacion.nombre}.`;
-      // Cargar estado actual de la partida
-      mostrarPantalla('preparacion');
-      consultarEstadoApi();
-      return;
-    }
-  }
-  
-  const resultado = await unirsePartidaApi(codigo || null, validacion.nombre);
-  if (resultado.ok) {
+  if (resultadoCrear.ok) {
+    console.log('[UI] Partida creada:', resultadoCrear.idPartida);
     mostrarPantalla('preparacion');
   } else {
-        if (errorUnirse) {
-      errorUnirse.textContent = resultado.error || 'Error al intentar unirse a la partida.';
-    }
+    mostrarErrorInicio(resultadoCrear.error || 'Error al conectar con el servidor.');
   }
+
+  btnJugar.textContent = 'Jugar / Buscar Partida';
+  btnJugar.disabled = false;
 });
 
 btnListo.addEventListener('click', async () => {

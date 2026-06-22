@@ -600,3 +600,38 @@ button:active {
   outline-offset: -2px; /* Borde hacia adentro */
   background: rgba(255, 100, 100, 0.2); /* Fondo rojizo semitransparente */
 }
+
+.vertical .svg-barco, 
+.barco-vertical .svg-barco {
+  transform: rotate(90deg);
+}
+
+.svg-barco {
+  width: 100%;
+  height: 100%;
+  display: block;
+  transition: transform 0.15s ease-in-out;
+}
+
+/* Ajustes del botón principal */
+#btn-jugar {
+  width: 100%;
+  padding: 15px;
+  font-size: 1.2rem;
+  background-color: var(--agua);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+#btn-jugar:hover {
+  background-color: #3b8ce0;
+}
+
+#btn-jugar:active {
+  transform: scale(0.98);
+}
