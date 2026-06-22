@@ -243,16 +243,12 @@ button:active {
   background: var(--agua);
 }
 
-.celda.barco {
-  background: var(--barco);
-}
-
-.celda.tocado {
-  background: var(--tocado);
-}
-
+/* Hacer transparente el fondo de las celdas con barco para lucir el SVG */
+.celda.barco,
+.celda.tocado,
 .celda.hundido {
-  background: var(--hundido);
+  background-color: transparent !important; 
+  /* Si prefieres que el agua de fondo se mantenga, usa: background-color: var(--agua); */
 }
 
 .celda.fallo {

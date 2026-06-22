@@ -54,24 +54,27 @@ function mostrarPantalla(nombre) {
   pantallas[nombre].classList.add('activa');
 }
 
-// Sustituye tu función crearTablero actual por esta:
 function crearTablero(contenedor, matriz, conEtiquetas = false, esRadar = false) {
-        if (displayId && idPartida) {
-          displayId.textContent = ` (Cód. partida: ${idPartida})`;
-        }
+  if (displayId && idPartida) {
+    displayId.textContent = ` (Cód. partida: ${idPartida})`;
+  }
   contenedor.innerHTML = '';
+  
   for (let fila = 0; fila < 10; fila += 1) {
     for (let columna = 0; columna < 10; columna += 1) {
       const celda = document.createElement('div');
       const valor = matriz[fila][columna];
-      celda.className = `celda ${valor}`; // Clase celda
-      celda.dataset.coordenada = `${fila}-${columna}`; // Coordenada de la celda
+      
+      // Asignamos las clases (agua, barco, tocado, fallo, hundido)
+      celda.className = `celda ${valor}`; 
+      celda.dataset.coordenada = `${fila}-${columna}`;
 
-      // Si la celda contiene un barco y no es el radar
-      if (valor === 'barco' && !esRadar) {
-        const barco = obtenerBarcoEnPosicion(fila, columna); 
-        let contenido = '';
-        if (barco && !esRadar) {
+      let contenido = '';
+
+      // 1. DIBUJAR EL BARCO (Si existe en estas coordenadas y no es el radar)
+      const barco = obtenerBarcoEnPosicion(fila, columna); 
+      
+      if (barco && !esRadar) {
         const posiciones = barco.posiciones; 
         const indice = posiciones.findIndex(([r, c]) => r === fila && c === columna); 
         const longitud = posiciones.length; 
@@ -85,42 +88,27 @@ function crearTablero(contenedor, matriz, conEtiquetas = false, esRadar = false)
         if (longitud > 1) { esVertical = posiciones[0][1] === posiciones[1][1]; }
         const claseOrientacion = esVertical ? 'barco-vertical' : 'barco-horizontal';
 
-        // Le añadimos position: absolute y z-index: 1 para que sea la capa base
+        // Inyectamos el SVG del barco
         contenido += `<div class="contenedor-svg-barco ${claseOrientacion}" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: absolute; top: 0; left: 0; z-index: 1;">
                        ${obtenerSvgBarco(tipoParte)}
                      </div>`;
       }
 
-      // CAPA 2: EFECTOS VISUALES (Se dibujan encima si la celda ha recibido disparo)
-      if (valor === 'fallo') {
-        contenido += obtenerSvgSalpicadura();
-      } else if (valor === 'tocado') {
-        contenido += obtenerSvgExplosion(false);
-      } else if (valor === 'hundido') {
-        contenido += obtenerSvgExplosion(true);
-      }
-
       celda.innerHTML = contenido;
-      } else {
-        if (conEtiquetas) {
-          //celda.textContent = String.fromCharCode(65 + fila) + (columna + 1); // Etiquetas para radar o flota
-        }
-      }
 
+      // 2. EVENTOS DE CLIC SEGÚN EL TABLERO
       if (contenedor === tableroPreparacion) {
-        // EVENT LISTENER: Al hacer clic (removerá barcos si los hay, o abrirá el modal si es agua)
         celda.addEventListener('click', () => handlePreparacionClick(fila, columna));
       }
 
       if (esRadar) {
-        celda.addEventListener('click', () => handleRadarClick(fila, columna)); // Clic para radar
+        celda.addEventListener('click', () => handleRadarClick(fila, columna));
       }
 
-      contenedor.appendChild(celda); // Añadimos celda al contenedor
+      contenedor.appendChild(celda);
     }
   }
 }
-
 
 function seleccionarBarco(id) {
   const barco = barcosDisponibles.find((item) => item.id === id);
@@ -623,47 +611,7 @@ function obtenerSvgBarco(tipoParte) {
   return '';
 }
 
-// ==========================================
-// FUNCIONES AUXILIARES: ANIMACIONES DE FX
-// ==========================================
 
-function obtenerSvgExplosion(esHundido) {
-  // Si es hundido, la explosión es más grande y roja. Si es tocado, es naranja.
-  const colorFuego = esHundido ? '#DC2626' : '#EA580C'; 
-  
-  return `<svg class="efecto-fx" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="animation: estallido 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;">
-    <circle cx="50" cy="50" r="45" fill="${colorFuego}" opacity="0.6">
-       <animate attributeName="opacity" values="0.8; 0" dur="0.6s" fill="freeze" />
-    </circle>
-    <path d="M50 15 L58 38 L80 35 L63 50 L75 70 L55 62 L50 85 L45 62 L25 70 L37 50 L20 35 L42 38 Z" fill="${colorFuego}" />
-    <path d="M50 25 L55 42 L70 40 L60 50 L68 65 L53 58 L50 75 L47 58 L32 65 L40 50 L30 40 L45 42 Z" fill="#FDE047" />
-    <circle cx="50" cy="50" r="25" fill="#111827" opacity="0">
-       <animate attributeName="r" values="0; 35" dur="0.5s" begin="0.1s" fill="freeze" />
-       <animate attributeName="opacity" values="0; 0.8; 0.9" dur="0.5s" begin="0.1s" fill="freeze" />
-    </circle>
-  </svg>`;
-}
-
-function obtenerSvgSalpicadura() {
-  return `<svg class="efecto-fx" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="50" cy="50" r="10" fill="none" stroke="#E0F2FE" stroke-width="6">
-      <animate attributeName="r" values="10; 45" dur="0.6s" fill="freeze" />
-      <animate attributeName="opacity" values="1; 0" dur="0.6s" fill="freeze" />
-    </circle>
-    <circle cx="50" cy="50" r="5" fill="none" stroke="#BAE6FD" stroke-width="4">
-      <animate attributeName="r" values="5; 35" dur="0.6s" begin="0.1s" fill="freeze" />
-      <animate attributeName="opacity" values="1; 0" dur="0.6s" begin="0.1s" fill="freeze" />
-    </circle>
-    <circle cx="50" cy="50" r="8" fill="#7DD3FC">
-      <animate attributeName="cy" values="50; 20; 60" dur="0.5s" fill="freeze" />
-      <animate attributeName="opacity" values="1; 1; 0" dur="0.5s" fill="freeze" />
-    </circle>
-    <circle cx="50" cy="50" r="4" fill="#E0F2FE">
-      <animate attributeName="cy" values="50; 10; 50" dur="0.6s" fill="freeze" />
-      <animate attributeName="opacity" values="1; 1; 0" dur="0.6s" fill="freeze" />
-    </circle>
-  </svg>`;
-}
 
 function renderTableros() {
   crearTablero(tableroPreparacion, miTablero);
