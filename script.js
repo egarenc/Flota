@@ -935,7 +935,6 @@ agregarEjesCoordenadasTradicionales('tablero-radar');
 agregarEjesCoordenadasTradicionales('tablero-flota');
 
 btnJugar.addEventListener('click', async () => {
-  console.log('[UI] Botón Jugar clickeado');
   limpiarErrorInicio();
   const validacion = validarNombreJugador();
   if (!validacion.ok) {
@@ -943,34 +942,43 @@ btnJugar.addEventListener('click', async () => {
     return;
   }
 
-  // Cambiamos el texto para dar feedback al usuario
-  btnJugar.textContent = 'Buscando partida...';
+  btnJugar.textContent = 'Procesando...';
   btnJugar.disabled = true;
 
-  // 1. Intentamos unirnos a una partida abierta (sin código)
-  const resultadoUnirse = await unirsePartidaApi(null, validacion.nombre);
+  // NUEVO PASO 0: ¿Ya estaba este jugador en una partida?
+  const chequeo = await verificarPartidaExistenteApi(validacion.nombre);
   
-  if (resultadoUnirse.ok) {
-    console.log('[UI] Unidos a partida existente:', resultadoUnirse.idPartida);
-    idPartida = resultadoUnirse.idPartida;
-    miJugador = resultadoUnirse.miJugador;
+  if (chequeo.encontrada) {
+    console.log('[UI] Reconectando a partida existente:', chequeo.idPartida);
+    idPartida = chequeo.idPartida;
+    miJugador = chequeo.miJugador;
     miNombre = validacion.nombre;
-    infoColocacion.textContent = `¡Unido a la partida ${idPartida}! Coloca tu flota.`;
     mostrarPantalla('preparacion');
-    btnJugar.textContent = 'Jugar / Buscar Partida';
-    btnJugar.disabled = false;
-    return;
-  }
-
-  // 2. Si no hay partidas disponibles, creamos una nueva
-  console.log('[UI] No hay partidas abiertas, creando una nueva...');
-  const resultadoCrear = await crearPartidaApi(validacion.nombre);
-  
-  if (resultadoCrear.ok) {
-    console.log('[UI] Partida creada:', resultadoCrear.idPartida);
-    mostrarPantalla('preparacion');
-  } else {
-    mostrarErrorInicio(resultadoCrear.error || 'Error al conectar con el servidor.');
+    // IMPORTANTE: Aquí deberías iniciar el polling para ver si el rival ya movió
+    startPolling(); 
+  } 
+  else {
+    // PASO 1: Intentar unirse a una partida abierta (lógica original)
+    const resultadoUnirse = await unirsePartidaApi(null, validacion.nombre);
+    
+    if (resultadoUnirse.ok) {
+      idPartida = resultadoUnirse.idPartida;
+      miJugador = resultadoUnirse.miJugador;
+      miNombre = validacion.nombre;
+      mostrarPantalla('preparacion');
+    } 
+    else {
+      // PASO 2: Crear nueva
+      const resultadoCrear = await crearPartidaApi(validacion.nombre);
+      if (resultadoCrear.ok) {
+        idPartida = resultadoCrear.idPartida;
+        miJugador = 1; // Eres el creador
+        miNombre = validacion.nombre;
+        mostrarPantalla('preparacion');
+      } else {
+        mostrarErrorInicio('Error al crear partida.');
+      }
+    }
   }
 
   btnJugar.textContent = 'Jugar / Buscar Partida';
