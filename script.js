@@ -79,29 +79,36 @@ function crearTablero(contenedor, matriz, conEtiquetas = false, esRadar = false)
       if (valor === 'barco' && !esRadar) {
         const barco = obtenerBarcoEnPosicion(fila, columna); 
         let contenido = '';
-        if (barco) {
-          const posiciones = barco.posiciones; 
-          const indice = posiciones.findIndex(([r, c]) => r === fila && c === columna); 
-          const longitud = posiciones.length; 
-          
-          // Determinamos inteligentemente el segmento del SVG
-          let tipoParte = 'medio';
-          if (longitud === 1) tipoParte = 'unico';
-          else if (indice === 0) tipoParte = 'popa';
-          else if (indice === longitud - 1) tipoParte = 'proa';
+        if (barco && !esRadar) {
+        const posiciones = barco.posiciones; 
+        const indice = posiciones.findIndex(([r, c]) => r === fila && c === columna); 
+        const longitud = posiciones.length; 
+        
+        let tipoParte = 'medio';
+        if (longitud === 1) tipoParte = 'unico';
+        else if (indice === 0) tipoParte = 'popa';
+        else if (indice === longitud - 1) tipoParte = 'proa';
 
-          // Calculamos la orientación analizando sus coordenadas
-          let esVertical = false;
-          if (longitud > 1) {
-            esVertical = posiciones[0][1] === posiciones[1][1]; // Si mantienen la misma columna, es vertical
-          }
-          const claseOrientacion = esVertical ? 'barco-vertical' : 'barco-horizontal';
+        let esVertical = false;
+        if (longitud > 1) { esVertical = posiciones[0][1] === posiciones[1][1]; }
+        const claseOrientacion = esVertical ? 'barco-vertical' : 'barco-horizontal';
 
-          contenido = `<div class="contenedor-svg-barco ${claseOrientacion}" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-                         ${obtenerSvgBarco(tipoParte)}
-                       </div>`;
-        }
-        celda.innerHTML = contenido;
+        // Le añadimos position: absolute y z-index: 1 para que sea la capa base
+        contenido += `<div class="contenedor-svg-barco ${claseOrientacion}" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: absolute; top: 0; left: 0; z-index: 1;">
+                       ${obtenerSvgBarco(tipoParte)}
+                     </div>`;
+      }
+
+      // CAPA 2: EFECTOS VISUALES (Se dibujan encima si la celda ha recibido disparo)
+      if (valor === 'fallo') {
+        contenido += obtenerSvgSalpicadura();
+      } else if (valor === 'tocado') {
+        contenido += obtenerSvgExplosion(false);
+      } else if (valor === 'hundido') {
+        contenido += obtenerSvgExplosion(true);
+      }
+
+      celda.innerHTML = contenido;
       } else {
         if (conEtiquetas) {
           //celda.textContent = String.fromCharCode(65 + fila) + (columna + 1); // Etiquetas para radar o flota
@@ -581,49 +588,145 @@ function actualizarNombreBatalla() {
     displayId.textContent = ` (Cód. partida: ${idPartida})`;
   }
 }
-// Generador de SVGs Cenitales de alta calidad
+// =========================================================
+// FUNCIÓN AUXILIAR: GENERADOR DE SVGs ULTRA-REALISTAS
+// =========================================================
 function obtenerSvgBarco(tipoParte) {
-  // Colores base: Casco gris oscuro metalizado, detalles en gris azulado
+  // Definimos materiales y sombras hiperrealistas
   const defs = `<defs>
-    <linearGradient id="cascoGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#64748B"/>
-      <stop offset="100%" stop-color="#334155"/>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="2" dy="5" stdDeviation="3" flood-color="#001a33" flood-opacity="0.8"/>
+    </filter>
+    
+    <linearGradient id="hullGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#374151"/>
+      <stop offset="15%" stop-color="#9CA3AF"/>  <stop offset="50%" stop-color="#D1D5DB"/>
+      <stop offset="85%" stop-color="#4B5563"/>
+      <stop offset="100%" stop-color="#111827"/> </linearGradient>
+
+    <linearGradient id="deckGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#8B7355"/>
+      <stop offset="50%" stop-color="#A68B6A"/>
+      <stop offset="100%" stop-color="#705C42"/>
+    </linearGradient>
+
+    <linearGradient id="subGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1F2937"/>
+      <stop offset="30%" stop-color="#6B7280"/>
+      <stop offset="70%" stop-color="#374151"/>
+      <stop offset="100%" stop-color="#030712"/>
     </linearGradient>
   </defs>`;
 
   switch (tipoParte) {
-    case 'unico': // Submarino / Lancha rápida (1 casilla)
+    case 'unico': // Submarino táctico (1 casilla)
       return `<svg class="svg-barco" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
         ${defs}
-        <path d="M15 35 C15 20 25 25 40 25 L65 25 C85 25 90 50 90 50 C90 50 85 75 65 75 L40 75 C25 75 15 80 15 65 Z" fill="url(#cascoGrad)" stroke="#0F172A" stroke-width="2"/>
-        <ellipse cx="50" cy="50" rx="12" ry="8" fill="#1E293B"/>
-        <rect x="25" y="45" width="10" height="10" fill="#94A3B8" rx="2"/>
+        <g filter="url(#shadow)">
+          <path d="M5 40 Q -5 50 5 60" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.4"/>
+          <path d="M10 50 C10 42 30 40 50 40 L70 40 C85 40 92 47 95 50 C92 53 85 60 70 60 L50 60 C30 60 10 58 10 50 Z" fill="url(#subGrad)"/>
+          <rect x="65" y="36" width="8" height="28" rx="2" fill="#1F2937"/>
+          <rect x="40" y="43" width="22" height="14" rx="4" fill="#374151" stroke="#111827" stroke-width="1.5"/>
+          <circle cx="55" cy="50" r="2.5" fill="#030712"/>
+        </g>
       </svg>`;
     
-    case 'popa': // Parte trasera (Motor/Hélices)
+    case 'popa': // Parte trasera (Helipuerto y torreta secundaria)
       return `<svg class="svg-barco" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
         ${defs}
-        <path d="M15 35 C15 25 25 25 40 25 L100 25 L100 75 L40 75 C25 75 15 75 15 65 Z" fill="url(#cascoGrad)" stroke="#0F172A" stroke-width="2"/>
-        <rect x="25" y="35" width="25" height="30" rx="4" fill="#475569" stroke="#0F172A"/>
-        <circle cx="35" cy="50" r="8" fill="#1E293B"/>
+        <path d="M10 40 Q 0 50 10 60" fill="none" stroke="#ffffff" stroke-width="4" opacity="0.3"/>
+        <g filter="url(#shadow)">
+          <path d="M10 35 C10 20 20 15 40 15 L100 15 L100 85 L40 85 C20 85 10 80 10 65 Z" fill="url(#hullGrad)"/>
+          <path d="M15 40 C15 30 25 22 40 22 L100 22 L100 78 L40 78 C25 78 15 70 15 60 Z" fill="url(#deckGrad)"/>
+          <circle cx="45" cy="50" r="16" fill="none" stroke="#FBBF24" stroke-width="2" stroke-dasharray="4,2"/>
+          <text x="45" y="55" font-family="Arial" font-size="14" fill="#FBBF24" text-anchor="middle" font-weight="bold">H</text>
+          <circle cx="85" cy="50" r="11" fill="url(#hullGrad)" stroke="#111827"/>
+          <rect x="62" y="46" width="23" height="2.5" fill="#6B7280" stroke="#111" stroke-width="0.5"/>
+          <rect x="62" y="51.5" width="23" height="2.5" fill="#6B7280" stroke="#111" stroke-width="0.5"/>
+          <polygon points="80,44 90,46 90,54 80,56" fill="#4B5563" stroke="#111827"/>
+        </g>
       </svg>`;
 
-    case 'medio': // Parte central (Cañones)
+    case 'medio': // Bloque central (Superestructura y Chimeneas)
       return `<svg class="svg-barco" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
         ${defs}
-        <rect x="0" y="25" width="100" height="50" fill="url(#cascoGrad)" stroke="#0F172A" stroke-width="2" stroke-dasharray="0 100 0 100"/>
-        <circle cx="50" cy="50" r="16" fill="#475569" stroke="#0F172A" stroke-width="2"/>
-        <line x1="50" y1="50" x2="90" y2="50" stroke="#0F172A" stroke-width="5" stroke-linecap="round"/>
+        <g filter="url(#shadow)">
+          <rect x="0" y="15" width="100" height="70" fill="url(#hullGrad)"/>
+          <rect x="0" y="22" width="100" height="56" fill="url(#deckGrad)"/>
+          <rect x="15" y="17" width="18" height="6" rx="3" fill="#E5E7EB" stroke="#4B5563"/>
+          <rect x="65" y="17" width="18" height="6" rx="3" fill="#E5E7EB" stroke="#4B5563"/>
+          <rect x="15" y="77" width="18" height="6" rx="3" fill="#E5E7EB" stroke="#4B5563"/>
+          <rect x="65" y="77" width="18" height="6" rx="3" fill="#E5E7EB" stroke="#4B5563"/>
+          <rect x="10" y="32" width="80" height="36" rx="3" fill="url(#hullGrad)" stroke="#111827"/>
+          <circle cx="20" cy="40" r="3" fill="#111827"/><circle cx="20" cy="60" r="3" fill="#111827"/>
+          <circle cx="80" cy="40" r="3" fill="#111827"/><circle cx="80" cy="60" r="3" fill="#111827"/>
+          <ellipse cx="35" cy="50" rx="9" ry="13" fill="#4B5563" stroke="#111827"/>
+          <ellipse cx="35" cy="50" rx="5" ry="9" fill="#030712"/>
+          <ellipse cx="65" cy="50" rx="9" ry="13" fill="#4B5563" stroke="#111827"/>
+          <ellipse cx="65" cy="50" rx="5" ry="9" fill="#030712"/>
+        </g>
       </svg>`;
 
-    case 'proa': // Parte delantera (Puntiaguda)
+    case 'proa': // Punta delantera (Torreta principal pesada)
       return `<svg class="svg-barco" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
         ${defs}
-        <path d="M0 25 L65 25 C85 25 95 50 95 50 C95 50 85 75 65 75 L0 75 Z" fill="url(#cascoGrad)" stroke="#0F172A" stroke-width="2"/>
-        <polygon points="20,35 55,50 20,65" fill="#475569" stroke="#0F172A" stroke-width="1.5" stroke-linejoin="round"/>
+        <path d="M60 15 Q 90 30 100 50 Q 90 70 60 85" fill="none" stroke="#ffffff" stroke-width="3" opacity="0.4"/>
+        <g filter="url(#shadow)">
+          <path d="M0 15 L60 15 C85 15 95 48 97 50 C95 52 85 85 60 85 L0 85 Z" fill="url(#hullGrad)"/>
+          <path d="M0 22 L55 22 C75 22 88 48 90 50 C88 52 75 78 55 78 L0 78 Z" fill="url(#deckGrad)"/>
+          <circle cx="75" cy="32" r="2.5" fill="#374151"/>
+          <circle cx="75" cy="68" r="2.5" fill="#374151"/>
+          <circle cx="35" cy="50" r="16" fill="url(#hullGrad)" stroke="#111827"/>
+          <rect x="35" y="41.5" width="40" height="3" fill="#9CA3AF" stroke="#111" stroke-width="0.5"/>
+          <rect x="35" y="48.5" width="40" height="3" fill="#9CA3AF" stroke="#111" stroke-width="0.5"/>
+          <rect x="35" y="55.5" width="40" height="3" fill="#9CA3AF" stroke="#111" stroke-width="0.5"/>
+          <polygon points="25,40 45,43 45,57 25,60" fill="#4B5563" stroke="#111827"/>
+        </g>
       </svg>`;
   }
   return '';
+}
+
+// ==========================================
+// FUNCIONES AUXILIARES: ANIMACIONES DE FX
+// ==========================================
+
+function obtenerSvgExplosion(esHundido) {
+  // Si es hundido, la explosión es más grande y roja. Si es tocado, es naranja.
+  const colorFuego = esHundido ? '#DC2626' : '#EA580C'; 
+  
+  return `<svg class="efecto-fx" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="animation: estallido 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;">
+    <circle cx="50" cy="50" r="45" fill="${colorFuego}" opacity="0.6">
+       <animate attributeName="opacity" values="0.8; 0" dur="0.6s" fill="freeze" />
+    </circle>
+    <path d="M50 15 L58 38 L80 35 L63 50 L75 70 L55 62 L50 85 L45 62 L25 70 L37 50 L20 35 L42 38 Z" fill="${colorFuego}" />
+    <path d="M50 25 L55 42 L70 40 L60 50 L68 65 L53 58 L50 75 L47 58 L32 65 L40 50 L30 40 L45 42 Z" fill="#FDE047" />
+    <circle cx="50" cy="50" r="25" fill="#111827" opacity="0">
+       <animate attributeName="r" values="0; 35" dur="0.5s" begin="0.1s" fill="freeze" />
+       <animate attributeName="opacity" values="0; 0.8; 0.9" dur="0.5s" begin="0.1s" fill="freeze" />
+    </circle>
+  </svg>`;
+}
+
+function obtenerSvgSalpicadura() {
+  return `<svg class="efecto-fx" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="50" cy="50" r="10" fill="none" stroke="#E0F2FE" stroke-width="6">
+      <animate attributeName="r" values="10; 45" dur="0.6s" fill="freeze" />
+      <animate attributeName="opacity" values="1; 0" dur="0.6s" fill="freeze" />
+    </circle>
+    <circle cx="50" cy="50" r="5" fill="none" stroke="#BAE6FD" stroke-width="4">
+      <animate attributeName="r" values="5; 35" dur="0.6s" begin="0.1s" fill="freeze" />
+      <animate attributeName="opacity" values="1; 0" dur="0.6s" begin="0.1s" fill="freeze" />
+    </circle>
+    <circle cx="50" cy="50" r="8" fill="#7DD3FC">
+      <animate attributeName="cy" values="50; 20; 60" dur="0.5s" fill="freeze" />
+      <animate attributeName="opacity" values="1; 1; 0" dur="0.5s" fill="freeze" />
+    </circle>
+    <circle cx="50" cy="50" r="4" fill="#E0F2FE">
+      <animate attributeName="cy" values="50; 10; 50" dur="0.6s" fill="freeze" />
+      <animate attributeName="opacity" values="1; 1; 0" dur="0.6s" fill="freeze" />
+    </circle>
+  </svg>`;
 }
 
 function renderTableros() {
@@ -890,6 +993,7 @@ btnListo.addEventListener('click', async () => {
 });
 
 btnOrientacion.addEventListener('click', alternarOrientacion);
+
 
 renderListaBarcos();
 renderTableros();
