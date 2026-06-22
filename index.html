@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Hundir la flota virtual</title>
-  <script src="https://unpkg.com/mobile-drag-drop@2.3.0-rc.2/index.min.js"></script>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -34,14 +33,12 @@
             <div id="tablero-preparacion" class="tablero"></div>
           </div>
           <aside class="barra-lateral">
-            <div class="lista-barcos">
-              <h3 id="titulo-lista-barcos">Barcos disponibles</h3>
-              <div id="lista-barcos-disponibles" class="lista-barcos-items">
-                </div>
+            <div class="instrucciones">
+              <h3 id="titulo-lista-barcos">Flota</h3>
+              <p>Haz clic en una celda vacía de tu tablero para desplegar los barcos disponibles.</p>
             </div>
             <div class="controles-colocacion">
-              <button id="btn-orientacion" class="btn-secundario">Orientación: Horizontal</button>
-              <div id="informacion-colocacion" class="info-colocacion">Selecciona un barco y haz clic en el tablero.</div>
+              <div id="informacion-colocacion" class="info-colocacion">Faltan barcos por colocar.</div>
             </div>
             <button id="btn-listo" class="btn-principal">Listo</button>
           </aside>
@@ -70,7 +67,18 @@
       </div>
     </section>
   </main>
-
+    <dialog id="modal-barcos" class="modal">
+    <div class="modal-header">
+      <h3>Selecciona un barco</h3>
+      <button id="btn-cerrar-modal" class="btn-cerrar">✕</button>
+    </div>
+    <div class="modal-body">
+      <button id="btn-orientacion-modal" class="btn-secundario" style="width: 100%; margin-bottom: 15px;">Orientación: Horizontal</button>
+      <p id="mensaje-modal" class="mensaje-modal"></p>
+      <div id="lista-barcos-modal" class="lista-barcos-items">
+        </div>
+    </div>
+  </dialog>
   <script src="script.js"></script>
 </body>
 </html>

@@ -1,12 +1,3 @@
-// Activar Polyfill para móviles (configuración simplificada)
-MobileDragDrop.polyfill({
-  // Mantiene presionado 200ms para iniciar el arrastre (evita conflictos con clics normales)
-  holdToDrag: 200 
-});
-
-// Evitar comportamientos de scroll no deseados en móviles durante el arrastre
-window.addEventListener('touchmove', function() {}, { passive: false });
-
 // ... aquí sigue el resto de tu código (const API_URL = ... etc)
 const API_URL = 'https://script.google.com/macros/s/AKfycbzEcW9ek3xWralEFrfSyPir1vgnMVBHa9Xo3MmEydHrs3dD4jnYDGErv34QW_eJSBzi/exec';
 
@@ -21,7 +12,7 @@ const tableroFlota = document.getElementById('tablero-flota');
 const tableroRadar = document.getElementById('tablero-radar');
 const btnJugar = document.getElementById('btn-jugar');
 const btnListo = document.getElementById('btn-listo');
-const btnOrientacion = document.getElementById('btn-orientacion');
+const btnOrientacionModal = document.getElementById('btn-orientacion-modal');
 const listaBarcosDiv = document.getElementById('lista-barcos-disponibles');
 const infoColocacion = document.getElementById('informacion-colocacion');
 const estadoTurno = document.getElementById('estado-turno');
@@ -30,6 +21,7 @@ const errorNombre = document.getElementById('error-nombre');
 const errorUnirse = document.getElementById('error-unirse');
 const inputCodigo = document.getElementById('codigo-partida');
 const displayId = document.getElementById('display-id-partida');
+
 let orientacionArrastrable = 'horizontal';
 
 const barcosDisponibles = [
@@ -116,69 +108,8 @@ function crearTablero(contenedor, matriz, conEtiquetas = false, esRadar = false)
       }
 
       if (contenedor === tableroPreparacion) {
-        
-        // EVENT LISTENER: Al hacer clic (para remover barcos)
+        // EVENT LISTENER: Al hacer clic (removerá barcos si los hay, o abrirá el modal si es agua)
         celda.addEventListener('click', () => handlePreparacionClick(fila, columna));
-
-        // EVENT LISTENER: Al arrastrar un barco sobre la celda
-        celda.addEventListener('dragover', (e) => {
-          e.preventDefault(); // Permitir el drop
-          if (!barcoSeleccionado) return; // Si no hay barco seleccionado, no hacemos nada
-          
-          // feedback visual de drop válido/inválido
-          const coordenadasPotential = obtenerCoordenadasBarco(fila, columna, barcoSeleccionado.tamaño, orientacionArrastrable); // Coordenadas potenciales
-          if (!coordenadasPotential) return; // Si no hay coordenadas, no hacemos nada
-          
-          // Verificamos si la posición es válida
-          const esValido = coordenadasPotential.every(([r, c]) => miTablero[r][c] === 'agua'); // Comprobamos si hay agua
-          
-          if (esValido) {
-            celda.classList.add('hover-drop'); // Clase CSS drop válido
-            celda.classList.remove('hover-drop-invalid'); // Clase CSS drop inválido
-          } else {
-            celda.classList.remove('hover-drop'); // Clase CSS drop válido
-            celda.classList.add('hover-drop-invalid'); // Clase CSS drop inválido
-          }
-        });
-
-        // EVENT LISTENER: Al dejar de arrastrar sobre la celda
-        celda.addEventListener('dragleave', () => {
-          celda.classList.remove('hover-drop', 'hover-drop-invalid'); // Quitamos feedback visual
-        });
-
-        // EVENT LISTENER: Al soltar el barco sobre la celda
-        celda.addEventListener('drop', (e) => {
-          e.preventDefault(); // Permitir el drop
-          celda.classList.remove('hover-drop', 'hover-drop-invalid'); // Quitamos feedback visual
-
-          if (!barcoSeleccionado) return; // Si no hay barco seleccionado, no hacemos nada
-          
-          // Intentamos colocar el barco
-          const colocacionCorrecta = colocarBarco(fila, columna, barcoSeleccionado.tamaño, orientacionArrastrable, barcoSeleccionado.id); // Colocamos barco
-          
-          if (colocacionCorrecta) {
-            barcoSeleccionado.colocados += 1; // Incrementamos contador de barcos colocados
-            
-            // Si el barco ya se ha colocado completamente
-            if (barcoSeleccionado.colocados >= barcoSeleccionado.disponibles) {
-              if (todosLosBarcosSonColocados()) {
-                barcoSeleccionado = null; // Barcos colocados
-                infoColocacion.textContent = 'Adelante, vamos al ataque.'; // Info colocación
-                actualizarTituloBarcos(); // Actualizar título barcos
-              } else {
-                barcoSeleccionado = null; // Limpiamos barcoSeleccionado
-                infoColocacion.textContent = 'Barco colocado. Elige otro barco.'; // Info colocación
-              }
-            } else {
-              infoColocacion.textContent = 'Barco colocado. Coloca otro del mismo tipo o elige otro.'; // Info colocación
-            }
-            
-            renderListaBarcos(); // Volvemos a renderizar la lista de barcos
-            renderTableros(); // Volvemos a renderizar el tablero
-          } else {
-            infoColocacion.textContent = 'No se puede colocar el barco ahí. Verifica el espacio y evita solapamientos.'; // Info colocación
-          }
-        });
       }
 
       if (esRadar) {
@@ -190,91 +121,6 @@ function crearTablero(contenedor, matriz, conEtiquetas = false, esRadar = false)
   }
 }
 
-// Sustituye tu función renderListaBarcos actual por esta:
-function renderListaBarcos() {
-  listaBarcosDiv.innerHTML = ''; // Limpiamos contenedor
-  
-  barcosDisponibles.forEach((barco) => {
-    const isPlaced = barco.colocados >= barco.disponibles; // Barco ya colocado
-    if (isPlaced) return; // Si ya está colocado, no lo renderizamos en la lista
-
-    // Contenedor para el gráfico y la etiqueta
-    const itemContainer = document.createElement('div');
-    itemContainer.className = 'barco-item-container'; // Nueva clase para flexbox
-
-    // El gráfico del barco
-    const shipGraphic = createShipGraphic(barco.tamaño, orientacionArrastrable, barco.id);
-    
-    // Label de información
-    const label = document.createElement('div');
-    label.className = 'barco-item-label';
-    label.textContent = `${barco.label} — disponibles: ${barco.disponibles - barco.colocados}`;
-
-    itemContainer.appendChild(shipGraphic); // Añadimos gráfico
-    itemContainer.appendChild(label); // Añadimos etiqueta
-    
-    listaBarcosDiv.appendChild(itemContainer); // Añadimos al contenedor principal
-  });
-}
-
-// NUEVA FUNCIÓN: Crea el gráfico arrastrable de un barco
-function createShipGraphic(size, orientation, shipId) {
-  const graphic = document.createElement('div');
-  graphic.className = `barco-grafico ${orientation}`; // Clases barco-grafico y orientación
-  graphic.draggable = true; // Hacemos el elemento arrastrable
-  graphic.dataset.tipo = shipId; // Almacenamos el ID de la tipología del barco
-  graphic.dataset.tamaño = size; // Almacenamos el tamaño del barco
-  
-  // Establecer dimensiones para asegurar que el gráfico tenga el tamaño correcto
-  const celdaWidth = 32; // Ancho fijo por celda gráfica
-  const celdaGap = 1; // Gap fino por celda gráfica
-  const totalCeldasSize = size * celdaWidth + (size - 1) * celdaGap; // Tamaño total de las celdas gráficas
-  
-  if (orientation === 'horizontal') {
-    graphic.style.width = `${totalCeldasSize}px`; // Ancho total para horizontal
-    graphic.style.height = `${celdaWidth}px`; // Alto total para horizontal
-  } else {
-    graphic.style.width = `${celdaWidth}px`; // Ancho total para vertical
-    graphic.style.height = `${totalCeldasSize}px`; // Alto total para vertical
-  }
-
-  // Creamos cada celda gráfica del barco
-  for (let i = 0; i < size; i++) {
-    const celda = document.createElement('div');
-    celda.className = 'barco-grafico-celda'; 
-    celda.dataset.offset = i; 
-    
-    // Determinamos qué segmento inyectar en la lista lateral
-    let tipoParte = 'medio';
-    if (size === 1) tipoParte = 'unico';
-    else if (i === 0) tipoParte = 'popa';
-    else if (i === size - 1) tipoParte = 'proa';
-
-    celda.innerHTML = `<div class="contenedor-svg-barco" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-                         ${obtenerSvgBarco(tipoParte)}
-                       </div>`;
-    
-    graphic.appendChild(celda); 
-  }
-
-  // EVENT LISTENER: Al iniciar el arrastre
-  graphic.addEventListener('dragstart', (e) => {
-    graphic.classList.add('dragging'); // Clase CSS dragging
-    // Guardamos los datos críticos para el drop en el DataTransfer
-    e.dataTransfer.setData('text/plain', shipId); // ID del barco
-    e.dataTransfer.setData('tamaño', size); // Tamaño del barco
-    e.dataTransfer.effectAllowed = 'move'; // Indicamos que es un movimiento
-    barcoSeleccionado = barcosDisponibles.find(b => b.id === shipId); // Establecemos barcoSeleccionado
-  });
-
-  // EVENT LISTENER: Al terminar el arrastre
-  graphic.addEventListener('dragend', () => {
-    graphic.classList.remove('dragging'); // Quitamos clase CSS dragging
-    barcoSeleccionado = null; // Limpiamos barcoSeleccionado
-  });
-
-  return graphic;
-}
 
 function seleccionarBarco(id) {
   const barco = barcosDisponibles.find((item) => item.id === id);
@@ -308,12 +154,14 @@ function obtenerSiguienteBarcoDisponible(idActual) {
   return null;
 }
 
-// Sustituye tu función alternarOrientacion actual por esta:
 function alternarOrientacion() {
-  orientacion = orientacion === 'horizontal' ? 'vertical' : 'horizontal'; // Alternamos orientación
-  btnOrientacion.textContent = `Orientación: ${orientacion.charAt(0).toUpperCase() + orientacion.slice(1)}`; // Actualizamos botón
-  orientacionArrastrable = orientacion; // Sincronizamos la nueva orientación para los barcos gráficos
-  renderListaBarcos(); // Volvemos a renderizar los gráficos de los barcos con la nueva orientación
+  orientacion = orientacion === 'horizontal' ? 'vertical' : 'horizontal';
+  btnOrientacionModal.textContent = `Orientación: ${orientacion.charAt(0).toUpperCase() + orientacion.slice(1)}`;
+  
+  // 🔄 Si el modal está abierto y tenemos una celda activa, refrescamos las opciones
+  if (celdaActivaParaColocar) {
+    abrirModalColocacion(celdaActivaParaColocar.fila, celdaActivaParaColocar.columna);
+  }
 }
 
 function actualizarTituloBarcos() {
@@ -324,18 +172,106 @@ function actualizarTituloBarcos() {
 }
 
 function handlePreparacionClick(fila, columna) {
-  // Primero verificar si hay un barco colocado en esa posición para removerlo
+  // 1. Si hay un barco colocado, lo removemos
   if (miTablero[fila][columna] === 'barco') {
-    if (removerBarcoDelTablero(fila, columna)) { // Removemos barco
-      infoColocacion.textContent = 'Barco removido. Vuelve a colocarlo o elige otro.'; 
-      renderListaBarcos(); 
+    if (removerBarcoDelTablero(fila, columna)) { 
+      infoColocacion.textContent = 'Barco removido. Faltan barcos por colocar.'; 
       renderTableros(); 
       return;
     }
   }
   
-  // Con el sistema Drag & Drop, no hacemos nada más al hacer clic.
-  // Toda la lógica antigua de colocación se ha eliminado.
+  // 2. Si no hay barco (es agua), abrimos el diálogo emergente
+  if (miTablero[fila][columna] === 'agua') {
+    abrirModalColocacion(fila, columna);
+  }
+}
+
+// --- VARIABLES Y LÓGICA DEL DIÁLOGO EMERGENTE ---
+const modalBarcos = document.getElementById('modal-barcos');
+const btnCerrarModal = document.getElementById('btn-cerrar-modal');
+const listaBarcosModal = document.getElementById('lista-barcos-modal');
+const mensajeModal = document.getElementById('mensaje-modal');
+
+let celdaActivaParaColocar = null;
+
+// Cerrar modal al pulsar la X (Incluye el reseteo del Punto D)
+btnCerrarModal.addEventListener('click', () => {
+  modalBarcos.close();
+  celdaActivaParaColocar = null; 
+});
+
+// Función que abre el modal y calcula qué barcos caben
+function abrirModalColocacion(fila, columna) {
+  celdaActivaParaColocar = { fila, columna };
+  listaBarcosModal.innerHTML = '';
+  mensajeModal.textContent = '';
+  
+  let algunBarcoCabe = false;
+  let barcosPendientes = false;
+
+  barcosDisponibles.forEach((barco) => {
+    if (barco.colocados < barco.disponibles) {
+      barcosPendientes = true;
+      
+      const coordenadasPosibles = obtenerCoordenadasBarco(fila, columna, barco.tamaño, orientacion);
+      let cabe = false;
+      
+      if (coordenadasPosibles) {
+        cabe = coordenadasPosibles.every(([r, c]) => miTablero[r][c] === 'agua');
+      }
+
+      if (cabe) algunBarcoCabe = true;
+
+      const btn = document.createElement('button');
+      btn.className = 'btn-barco-modal';
+      const nombreBarco = barco.id.charAt(0).toUpperCase() + barco.id.slice(1);
+      btn.textContent = `${nombreBarco} (${barco.label})`;
+      
+      if (!cabe) {
+        btn.disabled = true;
+        btn.textContent += ' - No cabe aquí';
+      } else {
+        btn.addEventListener('click', () => colocarBarcoDesdeModal(barco.id));
+      }
+      
+      listaBarcosModal.appendChild(btn);
+    }
+  });
+
+  if (!barcosPendientes) {
+    mensajeModal.textContent = "¡Ya has colocado todos los barcos!";
+  } else if (!algunBarcoCabe) {
+    mensajeModal.textContent = `Ningún barco cabe aquí en orientación ${orientacion}.`;
+  }
+
+  modalBarcos.showModal();
+}
+
+// Esta es la función colocarBarcoDesdeModal (Punto D). 
+// Ejecuta la colocación y luego limpia la celda activa.
+function colocarBarcoDesdeModal(tipoBarco) {
+  const barco = barcosDisponibles.find(b => b.id === tipoBarco);
+  const { fila, columna } = celdaActivaParaColocar;
+
+  const colocadoCorrectamente = colocarBarco(fila, columna, barco.tamaño, orientacion, barco.id);
+
+  if (colocadoCorrectamente) {
+    barco.colocados++;
+    modalBarcos.close();
+    
+    // Aquí está el reseteo que mencionábamos en el Punto D
+    celdaActivaParaColocar = null; 
+    
+    renderTableros();
+
+    if (todosLosBarcosSonColocados()) {
+      infoColocacion.textContent = 'Adelante, vamos al ataque.';
+      actualizarTituloBarcos();
+    } else {
+      infoColocacion.textContent = 'Faltan barcos por colocar.';
+    }
+  }
 }
 
 function handleRadarClick(fila, columna) {
@@ -1000,14 +936,15 @@ btnListo.addEventListener('click', async () => {
   }
 });
 
-btnOrientacion.addEventListener('click', alternarOrientacion);
+btnOrientacionModal.addEventListener('click', alternarOrientacion);
 
 
-renderListaBarcos();
+function comprobarSiTodosColocados() {
+  const todos = barcosDisponibles.every(b => b.colocados >= b.disponibles);
+  if (todos) {
+    infoColocacion.textContent = "¡Todos los barcos colocados!";
+    infoColocacion.style.color = "#00ff00"; // Verde
+  }
+}
+
 renderTableros();
-
-// ELIMINAR O COMENTAR estas líneas al final de script.js
-// // Preseleccionar el primer barco disponible
-// barcoSeleccionado = barcosDisponibles[0];
-// infoColocacion.textContent = `Coloca un barco de ${barcoSeleccionado.tamaño} casillas.`;
-// renderListaBarcos();
