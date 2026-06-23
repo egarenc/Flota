@@ -7,6 +7,29 @@ const pantallas = {
   batalla: document.getElementById('pantalla-batalla'),
 };
 
+// --- MOTOR DE AUDIO ---
+const sonidos = {
+  button: new Audio('button.mp3'),
+  drop: new Audio('drop.mp3'),
+  water: new Audio('water.mp3'),
+  explosion: new Audio('explosion.mp3'),
+  selection: new Audio('selection.mp3'),
+  ending: new Audio('ending.mp3')
+};
+
+// Configurar música de ambientación en bucle permanente
+sonidos.selection.loop = true;
+
+let sonidoHabilitado = true;
+
+function reproducirSonido(nombre) {
+  if (!sonidoHabilitado) return;
+  
+  // Reiniciar el cursor de tiempo para permitir repeticiones rápidas consecutivas
+  sonidos[nombre].currentTime = 0;
+  sonidos[nombre].play().catch(err => console.log("Reproducción de audio bloqueada temporalmente: ", err));
+}
+
 const tableroPreparacion = document.getElementById('tablero-preparacion');
 const tableroFlota = document.getElementById('tablero-flota');
 const tableroRadar = document.getElementById('tablero-radar');
@@ -52,6 +75,14 @@ let barcosColocados = []; // Rastrea barcos colocados: {tipo, posiciones: [[fila
 function mostrarPantalla(nombre) {
   Object.values(pantallas).forEach((pantalla) => pantalla.classList.remove('activa'));
   pantallas[nombre].classList.add('activa');
+
+  // Control musical de transiciones
+  if (nombre === 'preparacion') { // 👈 ¡Corregido! Ahora usamos la variable "nombre"
+    reproducirSonido('selection');
+  } else {
+    // 👈 IMPORTANTE: Añadimos el else para apagarla al pasar a batalla
+    sonidos.selection.pause(); 
+  }
 }
 
 function crearTablero(contenedor, matriz, conEtiquetas = false, esRadar = false) {
@@ -185,6 +216,7 @@ let celdaActivaParaColocar = null;
 
 // Cerrar modal al pulsar la X (Incluye el reseteo del Punto D)
 btnCerrarModal.addEventListener('click', () => {
+  reproducirSonido('button');
   modalBarcos.close();
   celdaActivaParaColocar = null; 
 });
@@ -270,6 +302,7 @@ function handleRadarClick(fila, columna) {
   if (miRadar[fila][columna] !== 'agua') {
     return;
   }
+  reproducirSonido('drop');
   enviarDisparoApi(fila, columna);
 }
 
@@ -395,6 +428,11 @@ async function enviarDisparoApi(fila, columna) {
   }
 
   const { resultado: disparoResultado } = resultado;
+  if (disparoResultado === 'fallo') {
+    reproducirSonido('water');
+  } else if (disparoResultado === 'tocado' || disparoResultado === 'hundido') {
+    reproducirSonido('explosion');
+  }
   miRadar[fila][columna] = disparoResultado === 'hundido' ? 'hundido' : disparoResultado === 'tocado' ? 'tocado' : 'fallo';
   renderTableros();
   if (comprobarFinDePartida()) {
@@ -482,6 +520,8 @@ function comprobarFinDePartida() {
     estadoTurno.style.backgroundColor = 'rgba(46, 204, 113, 0.3)'; // Fondo verde suave
     stopPolling();
     miTurno = false; // Bloquea futuros clics
+    sonidos.selection.pause(); // Por seguridad apaga música previa
+    reproducirSonido('ending'); // 👈 Añadido: Sonido de victoria
     return true;
   }
 
@@ -490,6 +530,8 @@ function comprobarFinDePartida() {
     estadoTurno.style.backgroundColor = 'rgba(216, 79, 79, 0.3)'; // Fondo rojo suave
     stopPolling();
     miTurno = false;
+    sonidos.selection.pause(); // Por seguridad apaga música previa
+    reproducirSonido('ending'); // 👈 Añadido: Sonido de derrota
     return true;
   }
 
@@ -819,6 +861,7 @@ agregarEjesCoordenadasTradicionales('tablero-radar');
 agregarEjesCoordenadasTradicionales('tablero-flota');
 
 btnJugar.addEventListener('click', async () => {
+  reproducirSonido('button');
   limpiarErrorInicio();
   const validacion = validarNombreJugador();
   if (!validacion.ok) {
@@ -869,7 +912,27 @@ btnJugar.addEventListener('click', async () => {
   btnJugar.disabled = false;
 });
 
+const toggleSonido = document.getElementById('toggle-sonido');
+const textoSonido = document.getElementById('texto-sonido');
+
+toggleSonido.addEventListener('change', (e) => {
+  sonidoHabilitado = e.target.checked;
+  textoSonido.textContent = sonidoHabilitado ? 'Sonido Activado' : 'Sonido Silenciado';
+  
+  if (!sonidoHabilitado) {
+    // Si el usuario silencia el juego, pausamos inmediatamente la música activa
+    sonidos.selection.pause();
+    sonidos.ending.pause();
+  } else {
+    // Si vuelve a activar el sonido estando en la fase de preparación, reanudamos
+    if (pantallas.preparacion.classList.contains('activa')) {
+      reproducirSonido('selection');
+    }
+  }
+});
+
 btnListo.addEventListener('click', async () => {
+  reproducirSonido('button');
   if (!barcosDisponibles.every((barco) => barco.colocados >= barco.disponibles)) {
     infoColocacion.textContent = 'Debes colocar todos los barcos antes de continuar.';
     return;
@@ -884,7 +947,8 @@ btnListo.addEventListener('click', async () => {
   }
 });
 
-btnOrientacionModal.addEventListener('click', alternarOrientacion);
+btnOrientacionModal.addEventListener('click', alternarOrientacion)
+reproducirSonido('button');
 
 
 function comprobarSiTodosColocados() {

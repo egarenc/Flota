@@ -897,3 +897,67 @@ button:active {
   transform: translateY(3px);
   box-shadow: 0 1px 0 #7c2222, 0 2px 3px rgba(0, 0, 0, 0.4);
 }
+
+/* ==========================================================================
+   ESTILOS PARA EL TOGGLE DE AUDIO
+   ========================================================================== */
+.contenedor-audio-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 20px 0;
+  font-weight: bold;
+  font-size: 0.95rem;
+  color: var(--texto);
+}
+
+/* Estructura del switch */
+.switch-audio {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 24px;
+}
+
+/* Ocultar el checkbox por defecto */
+.switch-audio input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* El carril del deslizador */
+.slider-audio {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #1a3a5c;
+  border: 1px solid var(--borde);
+  transition: .3s;
+  border-radius: 24px;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
+}
+
+/* El círculo interior (botón) con relieve */
+.slider-audio:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .3s;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+/* Estado activo (Checked) */
+.switch-audio input:checked + .slider-audio {
+  background-color: var(--agua);
+}
+
+.switch-audio input:checked + .slider-audio:before {
+  transform: translateX(24px);
+}
