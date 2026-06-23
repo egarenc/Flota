@@ -19,6 +19,9 @@ function handleRequest(e, method) {
   let response = { ok: false, error: 'Acción inválida' };
 
   switch (action) {
+    case 'buscarPartidaActiva': // 👈 Añadido
+      response = buscarPartidaActiva(params);
+      break;
     case 'crearPartida':
       response = crearPartida(params);
       break;
@@ -287,6 +290,7 @@ function consultarEstado(params) {
     listoParaBatalla: tableroListo(tableroPropio) && tableroListo(tableroRival),
     misDisparos: tableroPropio ? JSON.parse(tableroPropio.datos[3] || '[]') : [],
     disparosRival: tableroRival ? JSON.parse(tableroRival.datos[3] || '[]') : [],
+    misBarcos: tableroPropio ? JSON.parse(tableroPropio.datos[2] || '[]') : []
   };
   return estado;
 }
@@ -363,4 +367,29 @@ function verificarDerrota(jsonBarcos, jsonDisparos) {
     
   // Si todas las coordenadas de barcos están en la lista de hundidas, el jugador perdió
   return todasCoordsBarcos.every(coord => coordsHundidas.includes(coord));
+}
+
+function buscarPartidaActiva(params) {
+  const nombreJugador = params.playerName;
+  const hoja = obtenerHoja(HOJA_PARTIDAS);
+  const datos = hoja.getDataRange().getValues();
+
+  for (let i = 1; i < datos.length; i += 1) {
+    const fila = datos[i];
+    const estado = fila[4];
+    
+    // Solo nos interesan partidas vivas
+    if (estado === 'Esperando' || estado === 'En Curso') {
+      const j1 = String(fila[1]);
+      const j2 = String(fila[2]);
+      
+      if (j1 === nombreJugador) {
+        return { ok: true, encontrado: true, idPartida: fila[0], miJugador: 1, estadoPartida: estado };
+      }
+      if (j2 === nombreJugador) {
+        return { ok: true, encontrado: true, idPartida: fila[0], miJugador: 2, estadoPartida: estado };
+      }
+    }
+  }
+  return { ok: true, encontrado: false };
 }

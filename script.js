@@ -861,122 +861,182 @@ agregarEjesCoordenadasTradicionales('tablero-radar');
 agregarEjesCoordenadasTradicionales('tablero-flota');
 
 btnJugar.addEventListener('click', async () => {
-  reproducirSonido('button');
-  limpiarErrorInicio();
+  // 1. Reproducir sonido de forma segura solo si la función existe
+  if (typeof reproducirSonido === 'function') {
+    reproducirSonido('button');
+  }
   
-  const validacion = validarNombreJugador();
-  if (!validacion.valido) {
-    mostrarErrorInicio(validacion.error);
-    return;
+  // 2. Limpiar errores directamente en el DOM para evitar dependencias de funciones externas
+  const elError = document.getElementById('error-nombre');
+  if (elError) elError.textContent = '';
+  
+  // 3. Obtener y validar el nombre del jugador
+  let nombreJugador = '';
+  if (typeof validarNombreJugador === 'function') {
+    const validacion = validarNombreJugador();
+    if (!validacion.ok) { // 🌟 ¡CORREGIDO AQUÍ! Ahora lee correctamente la propiedad .ok de tu script
+      if (elError) elError.textContent = validacion.error || 'Nombre no válido';
+      return;
+    }
+    nombreJugador = validacion.nombre;
+  } else {
+    // Alternativa si no encuentra la función de validación
+    const inputNom = document.getElementById('nombre-jugador');
+    nombreJugador = inputNom ? inputNom.value.trim() : '';
+    if (!nombreJugador) {
+      if (elError) elError.textContent = 'Por favor, introduce un nombre válido.';
+      return;
+    }
   }
 
-  btnJugar.textContent = 'Verificando estado...';
+  // 4. Cambiar estado visual del botón (Feedback inmediato al usuario)
+  btnJugar.textContent = 'Verificando partidas activas...';
   btnJugar.disabled = true;
 
   try {
-    // 1. COMPROBACIÓN RECONEXIÓN: ¿Tiene este usuario una partida abierta en curso?
-    const chequeoActiva = await fetchApi('buscarPartidaActiva', { playerName: validacion.nombre });
+    // 5. Consultar a la API si ya existe una sesión abierta para este jugador
+    const chequeoActiva = await fetchApi('buscarPartidaActiva', { playerName: nombreJugador });
 
-    if (chequeoActiva.ok && chequeoActiva.encontrado) {
-      // ¡Sesión recuperada con éxito! Rehidratamos variables de estado globales
+    if (chequeoActiva && chequeoActiva.ok && chequeoActiva.encontrado) {
+      // ¡Reconexión detectada! Sincronizamos las variables de estado globales
       idPartida = chequeoActiva.idPartida;
       miJugador = chequeoActiva.miJugador;
-      miNombre = validacion.nombre;
+      miNombre = nombreJugador;
 
-      // Solicitamos a la API el histórico de tableros, barcos y ráfagas disparadas
+      // Descargamos el estado completo actual de los tableros y disparos desde la API
       const transicionEstado = await fetchApi('consultarEstado', { idPartida, jugador: miJugador });
 
-      if (transicionEstado.ok) {
-        // A. Reconstrucción de la Flota Propia (Tablero Local y Estructuras de Siluetas)
+      if (transicionEstado && transicionEstado.ok) {
+        
+        // A. Rehidratar la Flota Propia (Colocación de barcos)
         if (transicionEstado.misBarcos && transicionEstado.misBarcos.length > 0) {
           miTablero = Array(10).fill(null).map(() => Array(10).fill('agua'));
           
           transicionEstado.misBarcos.forEach((barcoRemoto) => {
-            barcoRemoto.coordenadas.forEach((coord) => {
-              const [f, c] = coord.split('-').map(Number);
-              miTablero[f][c] = 'barco';
-            });
+            if (barcoRemoto.coordenadas) {
+              barcoRemoto.coordenadas.forEach((coord) => {
+                const [f, c] = coord.split('-').map(Number);
+                if (miTablero[f] && miTablero[f][c] !== undefined) {
+                  miTablero[f][c] = 'barco';
+                }
+              });
+            }
             
-            // Sincronizamos las instancias internas de colocación para que el generador de SVGs actúe bien
-            const barcoLocal = barcosDisponibles.find((b) => b.id === barcoRemoto.id);
-            if (barcoLocal) {
-              barcoLocal.colocados = barcoLocal.disponibles;
-              barcoLocal.coordenadasInstancia = [...barcoRemoto.coordenadas];
+            // Sincronizar con las estructuras de barcos del panel lateral
+            if (typeof barcosDisponibles !== 'undefined') {
+              const barcoLocal = barcosDisponibles.find((b) => b.id === barcoRemoto.id);
+              if (barcoLocal) {
+                barcoLocal.colocados = barcoLocal.disponibles;
+                barcoLocal.coordenadasInstancia = [...barcoRemoto.coordenadas];
+              }
             }
           });
         }
 
-        // B. Reconstrucción del Radar de Ataque (Tus disparos realizados)
+        // B. Rehidratar el Radar de Ataque (Disparos realizados por mí)
         miRadar = Array(10).fill(null).map(() => Array(10).fill('agua'));
-        transicionEstado.misDisparos.forEach((disparo) => {
-          const [f, c] = disparo.coordenada.split('-').map(Number);
-          miRadar[f][c] = disparo.resultado;
-        });
+        if (transicionEstado.misDisparos) {
+          transicionEstado.misDisparos.forEach((disparo) => {
+            const [f, c] = disparo.coordenada.split('-').map(Number);
+            if (miRadar[f] && miRadar[f][c] !== undefined) {
+              miRadar[f][c] = disparo.resultado;
+            }
+          });
+        }
 
-        // C. Reconstrucción de Daños Recibidos (Impactos del enemigo sobre tus barcos)
-        transicionEstado.disparosRival.forEach((disparo) => {
-          const [f, c] = disparo.coordenada.split('-').map(Number);
-          if (miTablero[f][c] === 'barco') {
-            miTablero[f][c] = disparo.resultado; // Cambia dinámicamente a 'tocado' o 'hundido'
-          } else if (miTablero[f][c] === 'agua') {
-            miTablero[f][c] = 'fallo';
-          }
-        });
+        // C. Rehidratar Daños Recibidos (Disparos hechos por el rival en mi tablero)
+        if (transicionEstado.disparosRival) {
+          transicionEstado.disparosRival.forEach((disparo) => {
+            const [f, c] = disparo.coordenada.split('-').map(Number);
+            if (miTablero[f] && miTablero[f][c] !== undefined) {
+              if (miTablero[f][c] === 'barco') {
+                miTablero[f][c] = disparo.resultado; // 'tocado' o 'hundido'
+              } else if (miTablero[f][c] === 'agua') {
+                miTablero[f][c] = 'fallo';
+              }
+            }
+          });
+        }
 
-        // D. Enrutamiento automático de pantalla según la madurez de la partida
+        // D. Redirección de Pantalla según el progreso de la partida
+        const displayId = document.getElementById('display-id-partida');
+        if (displayId) displayId.textContent = ` (Código: ${idPartida})`;
+
         if (transicionEstado.listoParaBatalla) {
-          // Ambos jugadores están listos -> Saltamos directo a la Batalla
-          nombreJugadorBatalla.textContent = `${miNombre} (Jugador ${miJugador})`;
-          mostrarPantalla('batalla');
-          renderTableros();
-          actualizarTurno(transicionEstado.turnoDe === miJugador);
-          startPolling();
+          // Ambos jugadores listos -> Saltar directo a pantalla de Batalla
+          const txtNombreBatalla = document.getElementById('nombre-jugador-batalla');
+          if (txtNombreBatalla) txtNombreBatalla.textContent = `${miNombre} (Jugador ${miJugador})`;
+          
+          if (typeof mostrarPantalla === 'function') mostrarPantalla('batalla');
+          if (typeof renderTableros === 'function') renderTableros();
+          
+          // Actualizar el indicador de turno directamente en el DOM de forma segura
+          const elTurno = document.getElementById('estado-turno');
+          const esMiTurno = transicionEstado.turnoDe === miJugador;
+          if (elTurno) {
+            elTurno.textContent = esMiTurno ? '¡Es tu turno! Haz clic en el radar enemigo.' : 'Turno del rival. Esperando...';
+            elTurno.className = esMiTurno ? 'estado-turno tu-turno' : 'estado-turno turno-rival';
+          }
+          
+          if (typeof startPolling === 'function') startPolling();
         } else {
-          // Falta algún jugador por posicionarse -> Pantalla de Preparación
-          mostrarPantalla('preparacion');
-          renderListaBarcos();
-          renderTableros();
-          if (transicionEstado.misBarcos && transicionEstado.misBarcos.length > 0) {
-            infoColocacion.textContent = 'Esperando a que el adversario coloque su flota...';
-            startPolling();
+          // Falta algún jugador por colocar barcos -> Ir a pantalla de Preparación
+          if (typeof mostrarPantalla === 'function') mostrarPantalla('preparacion');
+          if (typeof renderListaBarcos === 'function') renderListaBarcos();
+          if (typeof renderTableros === 'function') renderTableros();
+          
+          const infoCol = document.getElementById('informacion-colocacion');
+          if (infoCol && transicionEstado.misBarcos && transicionEstado.misBarcos.length > 0) {
+            infoCol.textContent = 'Ya colocaste tus barcos. Esperando a que el rival termine...';
+            if (typeof startPolling === 'function') startPolling();
           }
         }
       } else {
-        mostrarErrorInicio('Error crítico al rehidratar los datos de sesión remotos.');
+        if (elError) elError.textContent = 'Error al descargar el estado de la partida activa.';
       }
     } else {
-      // 2. FLUJO TRADICIONAL (Sino tiene partidas previas, busca emparejamiento o crea)
-      btnJugar.textContent = 'Buscando partida...';
-      const resultadoUnirse = await unirsePartidaApi(validacion.nombre);
+      // 6. FLUJO TRADICIONAL: Si no hay partida activa para este nombre, busca unirse o crea una
+      btnJugar.textContent = 'Buscando partida libre...';
+      const resultadoUnirse = await unirsePartidaApi(nombreJugador);
       
-      if (resultadoUnirse.ok) {
+      if (resultadoUnirse && resultadoUnirse.ok) {
         idPartida = resultadoUnirse.idPartida;
         miJugador = resultadoUnirse.miJugador;
-        miNombre = validacion.nombre;
-        mostrarPantalla('preparacion');
-        renderListaBarcos();
-        renderTableros();
+        miNombre = nombreJugador;
+        
+        const displayId = document.getElementById('display-id-partida');
+        if (displayId) displayId.textContent = ` (Código: ${idPartida})`;
+        
+        if (typeof mostrarPantalla === 'function') mostrarPantalla('preparacion');
+        if (typeof renderListaBarcos === 'function') renderListaBarcos();
+        if (typeof renderTableros === 'function') renderTableros();
       } else {
-        const resultadoCrear = await crearPartidaApi(validacion.nombre);
-        if (resultadoCrear.ok) {
+        // Si no hay partidas disponibles en espera, creamos una nueva sala
+        const resultadoCrear = await crearPartidaApi(nombreJugador);
+        if (resultadoCrear && resultadoCrear.ok) {
           idPartida = resultadoCrear.idPartida;
           miJugador = 1;
-          miNombre = validacion.nombre;
-          mostrarPantalla('preparacion');
-          renderListaBarcos();
-          renderTableros();
+          miNombre = nombreJugador;
+          
+          const displayId = document.getElementById('display-id-partida');
+          if (displayId) displayId.textContent = ` (Código: ${idPartida})`;
+          
+          if (typeof mostrarPantalla === 'function') mostrarPantalla('preparacion');
+          if (typeof renderListaBarcos === 'function') renderListaBarcos();
+          if (typeof renderTableros === 'function') renderTableros();
         } else {
-          mostrarErrorInicio('Error de comunicación al instanciar una partida nueva.');
+          if (elError) elError.textContent = 'No se pudo crear ni unirse a ninguna partida.';
         }
       }
     }
   } catch (error) {
-    console.error("Fallo general en pasarela de inicio:", error);
-    mostrarErrorInicio('No se pudo conectar con el servidor central.');
+    console.error("Fallo crítico en el manejador de inicio de partida:", error);
+    if (elError) elError.textContent = 'Error de conexión o fallo interno del servidor.';
+  } finally {
+    // El bloque finally se ejecuta SIEMPRE, garantizando que el botón se reactive y vuelva a su texto original
+    btnJugar.textContent = 'Jugar / Buscar Partida';
+    btnJugar.disabled = false;
   }
-
-  btnJugar.textContent = 'Jugar / Buscar Partida';
-  btnJugar.disabled = false;
 });
 
 const toggleSonido = document.getElementById('toggle-sonido');
