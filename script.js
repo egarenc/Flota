@@ -40,7 +40,7 @@ const inputNombre = document.getElementById('nombre-jugador');
 const errorNombre = document.getElementById('error-nombre');
 const errorUnirse = document.getElementById('error-unirse');
 const inputCodigo = document.getElementById('codigo-partida');
-const displayId = document.getElementById('display-id-partida');
+//const displayId = document.getElementById('display-id-partida');
 
 let orientacionArrastrable = 'horizontal';
 
@@ -80,12 +80,15 @@ function mostrarPantalla(nombre) {
     // 👈 IMPORTANTE: Añadimos el else para apagarla al pasar a batalla
     sonidos.selection.pause(); 
   }
+  if (idPartida) {
+    document.querySelectorAll('.display-id-partida').forEach((span) => {
+      span.textContent = ` (Cód. Partida: ${idPartida})`;
+    });
+  }
 }
 
 function crearTablero(contenedor, matriz, conEtiquetas = false, esRadar = false) {
-  if (displayId && idPartida) {
-    displayId.textContent = ` (Cód. partida: ${idPartida})`;
-  }
+  
   contenedor.innerHTML = '';
   
   for (let fila = 0; fila < 10; fila += 1) {
