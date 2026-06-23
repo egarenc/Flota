@@ -1,5 +1,5 @@
 // ... aquí sigue el resto de tu código (const API_URL = ... etc)
-const API_URL = 'https://script.google.com/macros/s/AKfycbzEcW9ek3xWralEFrfSyPir1vgnMVBHa9Xo3MmEydHrs3dD4jnYDGErv34QW_eJSBzi/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbyDBbI6SNSKNIMzg7H4Mx9Jhl1jf-Yldx8nFxtcrwKP15cwCSXOCFz6dCw6INMIaQOA/exec';
 
 const pantallas = {
   inicio: document.getElementById('pantalla-inicio'),

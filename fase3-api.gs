@@ -255,9 +255,16 @@ function enviarDisparo(params) {
   }
 
   const filaPartida = partida.fila;
-  hojaPartidas.getRange(filaPartida, 4).setValue(rival);
+  if (partidaFinalizada) {
+    // Si el rival ha perdido, cambiamos el 'Estado' (Columna 5) a Finalizada
+    hojaPartidas.getRange(filaPartida, 5).setValue('Finalizada');
+  } else {
+    // Si la batalla sigue, guardamos con normalidad el cambio de turno (Columna 4)
+    hojaPartidas.getRange(filaPartida, 4).setValue(rival);
+  }
 
-  return { ok: true, resultado };
+  // Retornamos el veredicto incluyendo una bandera explicativa útil para el front
+  return { ok: true, resultado, finalizada: partidaFinalizada };
 }
 
 function consultarEstado(params) {
