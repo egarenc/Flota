@@ -19,7 +19,7 @@ html, body {
   min-height: 100%;
   font-family: Inter, system-ui, sans-serif;
   background: radial-gradient(circle at top, #23a166 0%, rgb(240, 116, 15) 80%);
-  background-image: url('background.jpg');
+  background-image: url('background.svg');
   background-size: cover;       /* Hace que la imagen cubra toda la pantalla */
   background-position: center;  /* Centra la imagen */
   background-repeat: no-repeat; /* Evita que la imagen se duplique en mosaico */
