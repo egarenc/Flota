@@ -17,9 +17,6 @@ const sonidos = {
   ending: new Audio('ending.mp3')
 };
 
-// Configurar música de ambientación en bucle permanente
-sonidos.selection.loop = true;
-
 let sonidoHabilitado = true;
 
 function reproducirSonido(nombre) {
