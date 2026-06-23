@@ -12,7 +12,14 @@
       <div class="panel central">
         <h1>Hundir la flota</h1>
         <p>Elige tu nombre de jugador</p>
-        <input id="nombre-jugador" type="text" placeholder="Nombre de jugador..." maxlength="15" />
+        <input 
+        id="nombre-jugador" 
+        type="text" 
+        placeholder="Nombre de jugador..." 
+        maxlength="15" 
+        oninput="this.value = this.value.toUpperCase();" 
+        style="text-transform: uppercase;" 
+        />
         <div id="error-nombre" class="error-inicio"></div>
         <div class="contenedor-audio-toggle">
           <span id="texto-sonido">Sonido Activado</span>
