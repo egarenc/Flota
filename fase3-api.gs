@@ -19,7 +19,7 @@ function handleRequest(e, method) {
   let response = { ok: false, error: 'Acción inválida' };
 
   switch (action) {
-    case 'buscarPartidaActiva': // 👈 Añadido
+    case 'buscarPartidaActiva':
       response = buscarPartidaActiva(params);
       break;
     case 'crearPartida':
@@ -148,40 +148,73 @@ function unirsePartida(params) {
   const hoja = obtenerHoja(HOJA_PARTIDAS);
   const datos = hoja.getDataRange().getValues();
 
-  // Si se proporciona un código específico, buscar ese
+  // 1. Si se proporciona un código específico, buscar esa partida concreta
   if (codigoEspecifico) {
     for (let i = 1; i < datos.length; i += 1) {
       const fila = datos[i];
       if (fila[0] === codigoEspecifico) {
-        const nombre1 = extraerNombreDeJugadorId(fila[1]);
-        if (nombre1 === nombreJugador) {
+        const nombre1 = fila[1] ? extraerNombreDeJugadorId(fila[1]) : '';
+        const nombre2 = fila[2] ? extraerNombreDeJugadorId(fila[2]) : '';
+        
+        if (nombre1 === nombreJugador || nombre2 === nombreJugador) {
           return { ok: false, error: 'No se permite el mismo nombre para los dos jugadores en una partida' };
         }
-        if (fila[2]) {
-          return { ok: false, error: 'La partida ya tiene dos jugadores' };
+        
+        // Si el hueco de Jugador 2 está vacío, entra como Jugador 2
+        if (fila[1] && (!fila[2] || String(fila[2]).trim() === '')) {
+          hoja.getRange(i + 1, 3).setValue(jugadorId);
+          hoja.getRange(i + 1, 5).setValue('En Curso');
+          hoja.getRange(i + 1, 4).setValue(1);
+          return { ok: true, idPartida: codigoEspecifico, miJugador: 2, jugador1: fila[1], jugador2: jugadorId, estado: 'En Curso', turnoDe: 1 };
         }
-        hoja.getRange(i + 1, 3).setValue(jugadorId);
-        hoja.getRange(i + 1, 5).setValue('En Curso');
-        hoja.getRange(i + 1, 4).setValue(1);
-        return { ok: true, idPartida: codigoEspecifico, miJugador: 2, jugador1: fila[1], jugador2: jugadorId, estado: 'En Curso', turnoDe: 1 };
+        
+        // Si el hueco de Jugador 1 está vacío, entra como Jugador 1
+        if (fila[2] && (!fila[1] || String(fila[1]).trim() === '')) {
+          hoja.getRange(i + 1, 2).setValue(jugadorId);
+          hoja.getRange(i + 1, 5).setValue('En Curso');
+          hoja.getRange(i + 1, 4).setValue(1);
+          return { ok: true, idPartida: codigoEspecifico, miJugador: 1, jugador1: jugadorId, jugador2: fila[2], estado: 'En Curso', turnoDe: 1 };
+        }
+        
+        return { ok: false, error: 'La partida ya tiene dos jugadores' };
       }
     }
     return { ok: false, error: 'Partida no encontrada' };
   }
 
-  // Si no se proporciona código, buscar la partida más antigua en estado 'Esperando'
+  // 2. BÚSQUEDA AUTOMÁTICA: Buscar la partida más antigua en estado 'Esperando' comprobando ambos campos
   for (let i = 1; i < datos.length; i += 1) {
     const fila = datos[i];
-    if (fila[4] === 'Esperando' && !fila[2]) {
-      const nombre1 = extraerNombreDeJugadorId(fila[1]);
-      if (nombre1 === nombreJugador) {
-        continue;
+    
+    if (fila[4] === 'Esperando') {
+      const jugador1 = fila[1];
+      const jugador2 = fila[2];
+      const nombre1 = jugador1 ? extraerNombreDeJugadorId(jugador1) : '';
+      const nombre2 = jugador2 ? extraerNombreDeJugadorId(jugador2) : '';
+
+      // CASO A: Está el Jugador 1 pero el puesto de Jugador 2 está libre
+      if (jugador1 && String(jugador1).trim() !== '' && (!jugador2 || String(jugador2).trim() === '')) {
+        if (nombre1 === nombreJugador) {
+          continue; // Evita unirse a su propia partida creada
+        }
+        const codigo = fila[0];
+        hoja.getRange(i + 1, 3).setValue(jugadorId); // Columna 3 (C) es Jugador 2
+        hoja.getRange(i + 1, 5).setValue('En Curso');
+        hoja.getRange(i + 1, 4).setValue(1); // Asignar turno al jugador 1 por defecto
+        return { ok: true, idPartida: codigo, miJugador: 2, jugador1: jugador1, jugador2: jugadorId, estado: 'En Curso', turnoDe: 1 };
       }
-      const codigo = fila[0];
-      hoja.getRange(i + 1, 3).setValue(jugadorId);
-      hoja.getRange(i + 1, 5).setValue('En Curso');
-      hoja.getRange(i + 1, 4).setValue(1);
-      return { ok: true, idPartida: codigo, miJugador: 2, jugador1: fila[1], jugador2: jugadorId, estado: 'En Curso', turnoDe: 1 };
+
+      // CASO B: Está el Jugador 2 pero el puesto de Jugador 1 está libre
+      if (jugador2 && String(jugador2).trim() !== '' && (!jugador1 || String(jugador1).trim() === '')) {
+        if (nombre2 === nombreJugador) {
+          continue; // Evita unirse a su propia partida
+        }
+        const codigo = fila[0];
+        hoja.getRange(i + 1, 2).setValue(jugadorId); // Columna 2 (B) es Jugador 1
+        hoja.getRange(i + 1, 5).setValue('En Curso');
+        hoja.getRange(i + 1, 4).setValue(1); // Asignar turno al jugador 1 (el nuevo jugador)
+        return { ok: true, idPartida: codigo, miJugador: 1, jugador1: jugadorId, jugador2: jugador2, estado: 'En Curso', turnoDe: 1 };
+      }
     }
   }
 
@@ -256,7 +289,9 @@ function enviarDisparo(params) {
   } else {
     hojaTableros.appendRow([codigo, jugador, '[]', JSON.stringify(disparosPropios)]);
   }
-
+  
+  const partidaFinalizada = verificarDerrota(tableroRival.datos[2], JSON.stringify(disparosPropios));
+  
   const filaPartida = partida.fila;
   if (partidaFinalizada) {
     // Si el rival ha perdido, cambiamos el 'Estado' (Columna 5) a Finalizada
@@ -374,7 +409,7 @@ function buscarPartidaActiva(params) {
   const hoja = obtenerHoja(HOJA_PARTIDAS);
   const datos = hoja.getDataRange().getValues();
 
-  for (let i = 1; i < datos.length; i += 1) {
+  for (let i = 0; i < datos.length; i += 1) {
     const fila = datos[i];
     const estado = fila[4];
     
